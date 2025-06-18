@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1021069332614",
+    "project_id": "nayanasartistry-e78b0",
+    "storage_bucket": "nayanasartistry-e78b0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1021069332614:android:a2be31565be80cf5e50107",
+        "android_client_info": {
+          "package_name": "com.example.nayanasartistry"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1021069332614-r2jvfui3jdh7e13efa10h0v2lofb7cpb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nayanasartistry",
+            "certificate_hash": "fc92fee3bea107826deed21dcb12faadcc3b5932"
+          }
+        },
+        {
+          "client_id": "1021069332614-5ceevvb8324ps2q25cs9spp9b04lus3c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDBFiwitmUJBiwzlL2v0zE-45s1_XSur4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1021069332614-5ceevvb8324ps2q25cs9spp9b04lus3c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1021069332614-c756ecpp6ad6l7jis27adkv7mimgtigp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.nayanasartistry"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
