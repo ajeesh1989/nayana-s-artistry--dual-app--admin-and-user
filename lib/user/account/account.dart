@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:nayanasartistry/auth/auth_gate.dart';
 import 'package:nayanasartistry/user/account/add_address.dart';
 import 'package:nayanasartistry/user/account/address_controller.dart';
+import 'package:nayanasartistry/user/order/order_history.dart';
 import 'package:nayanasartistry/user/wishlist/wishlist.dart';
 import 'package:provider/provider.dart';
 
@@ -77,7 +78,10 @@ class AccountPage extends StatelessWidget {
             leading: const Icon(Icons.shopping_bag_outlined),
             title: const Text('My Orders'),
             onTap: () {
-              // Navigate to Orders Page
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => OrderHistoryPage()),
+              );
             },
           ),
           ListTile(

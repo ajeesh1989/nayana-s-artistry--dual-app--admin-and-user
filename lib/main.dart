@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:nayanasartistry/admin/controller/admin_controller.dart';
+import 'package:nayanasartistry/admin/controller/admin_order_controller.dart';
+import 'package:provider/provider.dart';
+
+import 'package:nayanasartistry/firebase_options.dart';
+import 'package:nayanasartistry/theme/theme_controller.dart';
 import 'package:nayanasartistry/user/account/address_controller.dart';
 import 'package:nayanasartistry/user/cart/cart_controller.dart';
 import 'package:nayanasartistry/user/home/controller/home_controller.dart';
+import 'package:nayanasartistry/user/order/order_controller.dart';
 import 'package:nayanasartistry/user/pages/splash/splash.dart';
-import 'package:nayanasartistry/theme/theme_controller.dart';
 import 'package:nayanasartistry/user/productview/product_controller.dart';
 import 'package:nayanasartistry/user/wishlist/wish_list_controller.dart';
-import 'package:provider/provider.dart';
-import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,16 +25,27 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
-        ChangeNotifierProvider<HomeProvider>(create: (_) => HomeProvider()),
-        ChangeNotifierProvider<ProductController>(
-          create: (_) => ProductController(),
-        ),
+        ChangeNotifierProvider(create: (_) => HomeProvider()),
+        ChangeNotifierProvider(create: (_) => ProductController()),
         ChangeNotifierProvider(
           create: (_) => WishlistProvider()..fetchWishlist(),
         ),
         ChangeNotifierProvider(create: (_) => CartProvider()..fetchCart()),
         ChangeNotifierProvider(
           create: (_) => AddressProvider()..fetchAddresses(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final c = OrderController();
+            c.fetchOrders(); // 👍 preload
+            return c;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AdminController()..fetchDashboardStats(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AdminOrderController()..fetchOrders(),
         ),
       ],
       child: const MyApp(),

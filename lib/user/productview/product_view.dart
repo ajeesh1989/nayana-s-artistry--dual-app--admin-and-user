@@ -1,6 +1,7 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:nayanasartistry/user/account/select_address.dart';
+import 'package:nayanasartistry/user/buy_now/buy_now.dart';
 import 'package:nayanasartistry/user/cart/cart.dart';
 import 'package:nayanasartistry/user/cart/cart_controller.dart';
 import 'package:nayanasartistry/user/productview/image_preview_screen.dart';
@@ -21,13 +22,12 @@ class ProductViewScreen extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final data = productData;
-    final name = data['name'] ?? '';
-    final price = data['price'] ?? 0;
-    final images = List<String>.from(data['imageUrls'] ?? []);
-    final category = data['category'] ?? '';
-    final description = data['description'] ?? 'No description provided';
-    final rating = data['rating'] ?? 4.2;
+    final name = productData['name'] ?? '';
+    final price = productData['price'] ?? 0;
+    final images = List<String>.from(productData['imageUrls'] ?? []);
+    final category = productData['category'] ?? '';
+    final description = productData['description'] ?? 'No description provided';
+    final rating = productData['rating'] ?? 4.2;
 
     final addresses = addressProvider.addresses;
     final selectedAddress = addresses.firstWhere(
@@ -44,7 +44,10 @@ class ProductViewScreen extends StatelessWidget {
       child: Consumer<ProductController>(
         builder: (context, controller, _) {
           return Scaffold(
-            appBar: AppBar(title: Text(name), centerTitle: true),
+            appBar: AppBar(
+              title: Text("$name", style: TextStyle(fontSize: 18)),
+              centerTitle: true,
+            ),
             body: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +63,8 @@ class ProductViewScreen extends StatelessWidget {
                             viewportFraction: 1,
                             enableInfiniteScroll: false,
                             onPageChanged: (index, reason) {
-                              controller.notifyListeners(); // rebuild dots
+                              controller
+                                  .notifyListeners(); // just to rebuild dots
                             },
                           ),
                           itemBuilder: (context, index, realIndex) {
@@ -119,6 +123,15 @@ class ProductViewScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
+                          "Description",
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(description), const SizedBox(height: 8),
+
+                        Text(
                           "₹$price",
                           style: textTheme.headlineSmall?.copyWith(
                             color: colorScheme.primary,
@@ -144,7 +157,7 @@ class ProductViewScreen extends StatelessWidget {
                         ),
                         const Divider(height: 30),
 
-                        // ✅ Address Section
+                        /// ✅ Address Section
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -174,7 +187,7 @@ class ProductViewScreen extends StatelessWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => SelectAddressPage(),
+                                    builder: (_) => const SelectAddressPage(),
                                   ),
                                 );
                               },
@@ -182,16 +195,7 @@ class ProductViewScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const Divider(height: 30),
 
-                        Text(
-                          "Description",
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(description),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -210,17 +214,13 @@ class ProductViewScreen extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () async {
-                        await Provider.of<CartProvider>(
-                          context,
-                          listen: false,
-                        ).addToCart(productData);
-
+                        await cartProvider.addToCart(productData);
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Added to cart')),
                         );
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const CartPage()),
+                          MaterialPageRoute(builder: (_) => CartPage()),
                         );
                       },
                       icon: const Icon(Icons.add_shopping_cart),
@@ -234,7 +234,20 @@ class ProductViewScreen extends StatelessWidget {
                         backgroundColor: colorScheme.primary,
                       ),
                       onPressed: () {
-                        // Buy Now logic here
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (_) => BuyNowPage(
+                                  amount: price.toDouble(),
+                                  customerName: selectedAddress.fullName,
+                                  customerPhone: selectedAddress.phone,
+                                  customerEmail: 'test@example.com',
+                                  address: selectedAddress,
+                                  productData: productData,
+                                ),
+                          ),
+                        );
                       },
                       child: Text(
                         "Buy Now",

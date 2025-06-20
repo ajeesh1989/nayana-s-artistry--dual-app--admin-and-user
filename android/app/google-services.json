@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1021069332614-at1qeua85h01dpke03em7scqcf36cs25.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nayanasartistry",
+            "certificate_hash": "c8f1ff9c92dda566110fb1df5649932bebc491ee"
+          }
+        },
+        {
           "client_id": "1021069332614-r2jvfui3jdh7e13efa10h0v2lofb7cpb.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

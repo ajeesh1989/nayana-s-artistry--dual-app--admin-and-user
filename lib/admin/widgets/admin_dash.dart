@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:nayanasartistry/user/shimmer.dart';
+import 'package:provider/provider.dart';
+
+import 'package:nayanasartistry/admin/controller/admin_controller.dart';
+import 'package:nayanasartistry/admin/order_list/admin_order_list.dart';
 import 'package:nayanasartistry/admin/widgets/action_tile.dart';
 import 'package:nayanasartistry/admin/widgets/dashboard_tile.dart';
 import 'package:nayanasartistry/auth/auth_gate.dart';
-import 'package:provider/provider.dart';
 import 'package:nayanasartistry/theme/theme_controller.dart';
 
 class AdminDashboard extends StatelessWidget {
@@ -12,6 +16,10 @@ class AdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final adminController = Provider.of<AdminController>(
+      context,
+      listen: false,
+    );
     final user = FirebaseAuth.instance.currentUser;
     final displayName = user?.displayName ?? "Admin";
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -62,8 +70,7 @@ class AdminDashboard extends StatelessWidget {
                 showDialog(
                   context: context,
                   barrierDismissible: false,
-                  builder:
-                      (_) => const Center(child: CircularProgressIndicator()),
+                  builder: (_) => const Center(child: ProductShimmer()),
                 );
 
                 try {
@@ -72,7 +79,6 @@ class AdminDashboard extends StatelessWidget {
                     await googleSignIn.disconnect();
                     await googleSignIn.signOut();
                   }
-
                   await FirebaseAuth.instance.signOut();
                 } catch (e) {
                   debugPrint('Logout error: $e');
@@ -91,46 +97,77 @@ class AdminDashboard extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            'Welcome, $displayName 👋',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: const [
-              Expanded(child: DashboardTile(title: "Users", count: "120")),
-              SizedBox(width: 8),
-              Expanded(child: DashboardTile(title: "Orders", count: "58")),
-              SizedBox(width: 8),
-              Expanded(child: DashboardTile(title: "Revenue", count: "₹12K")),
+      body: Consumer<AdminController>(
+        builder: (context, adminController, _) {
+          if (adminController.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text(
+                'Welcome, $displayName 👋',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: DashboardTile(
+                      title: "Users",
+                      count: "${adminController.userCount}",
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DashboardTile(
+                      title: "Orders",
+                      count: "${adminController.orderCount}",
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DashboardTile(
+                      title: "Revenue",
+                      count: "₹${adminController.revenue.toStringAsFixed(0)}",
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+              ActionTile(
+                icon: Icons.shopping_cart_outlined,
+                title: "View Orders",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AdminOrderListPage()),
+                  );
+                },
+              ),
+              const ActionTile(
+                icon: Icons.store_outlined,
+                title: "Manage Store",
+              ),
+              const ActionTile(icon: Icons.category, title: "All Products"),
+              const ActionTile(
+                icon: Icons.people_outline,
+                title: "Manage Users",
+              ),
+              ActionTile(
+                icon: Icons.settings_outlined,
+                title: "Dark Mode",
+                trailing: Switch(
+                  value: isDarkMode,
+                  onChanged: (val) => themeProvider.toggleTheme(val),
+                ),
+              ),
             ],
-          ),
-          const SizedBox(height: 30),
-          const ActionTile(
-            icon: Icons.shopping_cart_outlined,
-            title: "View Orders",
-          ),
-          const ActionTile(icon: Icons.store_outlined, title: "Manage Store"),
-          const ActionTile(icon: Icons.category, title: "All Products"),
-          const ActionTile(icon: Icons.people_outline, title: "Manage Users"),
-          // 🌓 Dark Mode Toggle in Settings
-          ActionTile(
-            icon: Icons.settings_outlined,
-            title: "Dark Mode",
-            trailing: Switch(
-              value: isDarkMode,
-              onChanged: (val) {
-                themeProvider.toggleTheme(val); // ✅ correctly pass bool
-              },
-            ),
-            onTap: null, // Disable tap since we're using the switch
-          ),
-        ],
+          );
+        },
       ),
     );
   }

@@ -63,4 +63,22 @@ class CartProvider with ChangeNotifier {
     cartItems.removeWhere((item) => item['id'] == productId);
     notifyListeners();
   }
+
+  Future<void> clearCart() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final cartRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('cart');
+
+    final snapshot = await cartRef.get();
+    for (final doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
+
+    cartItems.clear();
+    notifyListeners();
+  }
 }
