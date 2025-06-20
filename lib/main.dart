@@ -1,19 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:nayanasartistry/auth/auth_gate.dart';
-import 'package:nayanasartistry/pages/splash/splash.dart';
+import 'package:nayanasartistry/user/account/address_controller.dart';
+import 'package:nayanasartistry/user/cart/cart_controller.dart';
+import 'package:nayanasartistry/user/home/controller/home_controller.dart';
+import 'package:nayanasartistry/user/pages/splash/splash.dart';
 import 'package:nayanasartistry/theme/theme_controller.dart';
+import 'package:nayanasartistry/user/productview/product_controller.dart';
+import 'package:nayanasartistry/user/wishlist/wish_list_controller.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   final themeProvider = ThemeProvider();
   await themeProvider.loadThemePreference();
 
   runApp(
-    ChangeNotifierProvider.value(value: themeProvider, child: const MyApp()),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
+        ChangeNotifierProvider<HomeProvider>(create: (_) => HomeProvider()),
+        ChangeNotifierProvider<ProductController>(
+          create: (_) => ProductController(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => WishlistProvider()..fetchWishlist(),
+        ),
+        ChangeNotifierProvider(create: (_) => CartProvider()..fetchCart()),
+        ChangeNotifierProvider(
+          create: (_) => AddressProvider()..fetchAddresses(),
+        ),
+      ],
+      child: const MyApp(),
+    ),
   );
 }
 

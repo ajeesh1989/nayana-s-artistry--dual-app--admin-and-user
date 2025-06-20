@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:nayanasartistry/admin/admin_dash.dart';
+import 'package:nayanasartistry/admin/widgets/admin_dash.dart';
 import 'package:nayanasartistry/auth/auth_gate.dart';
-import 'package:nayanasartistry/home/home.dart';
+import 'package:nayanasartistry/user/home/home.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -61,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
-        child: Image.asset(logoPath, width: 180, fit: BoxFit.contain),
+        child: Image.asset(logoPath, width: 300, fit: BoxFit.contain),
       ),
     );
   }

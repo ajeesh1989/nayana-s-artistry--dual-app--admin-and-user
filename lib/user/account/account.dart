@@ -3,7 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:nayanasartistry/auth/auth_gate.dart';
-import 'package:nayanasartistry/pages/wishlist/wishlist.dart';
+import 'package:nayanasartistry/user/account/add_address.dart';
+import 'package:nayanasartistry/user/account/address_controller.dart';
+import 'package:nayanasartistry/user/wishlist/wishlist.dart';
+import 'package:provider/provider.dart';
 
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
@@ -91,14 +94,53 @@ class AccountPage extends StatelessWidget {
             leading: const Icon(Icons.location_on_outlined),
             title: const Text('Saved Addresses'),
             onTap: () {
-              // Navigate to Saved Addresses Page
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) {
+                  return SizedBox(
+                    height: 400,
+                    child: Consumer<AddressProvider>(
+                      builder: (_, addressProvider, __) {
+                        final addresses = addressProvider.addresses;
+                        if (addresses.isEmpty) {
+                          return const Center(
+                            child: Text('No addresses saved.'),
+                          );
+                        }
+
+                        return ListView.builder(
+                          itemCount: addresses.length,
+                          itemBuilder: (_, index) {
+                            final a = addresses[index];
+                            return Padding(
+                              padding: const EdgeInsets.all(15.0),
+                              child: ListTile(
+                                title: Text(a.fullName),
+                                subtitle: Text(
+                                  '${a.address}\nPhone: ${a.phone}',
+                                ),
+                                isThreeLine: true,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  );
+                },
+              );
             },
           ),
+
           ListTile(
             leading: const Icon(Icons.add_location_alt_outlined),
             title: const Text('Add New Address'),
             onTap: () {
-              // Navigate to Add Address Page
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddAddressPage()),
+              );
             },
           ),
 
