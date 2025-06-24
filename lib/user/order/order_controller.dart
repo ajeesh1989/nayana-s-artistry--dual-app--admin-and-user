@@ -1,12 +1,13 @@
-// lib/user/order/order_controller.dart
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class OrderController with ChangeNotifier {
-  final List<Map<String, dynamic>> _orders = [];
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
+  List<Map<String, dynamic>> _orders = [];
+  StreamSubscription? _orderSubscription;
 
   List<Map<String, dynamic>> get orders => _orders;
 
@@ -31,51 +32,53 @@ class OrderController with ChangeNotifier {
       'orderDate': Timestamp.now(),
       'deliveryDate': deliveryDate,
       'paymentMethod': paymentMethod,
-      'status': 'Pending', // ✅ default
+      'status': 'Pending',
       'customerName': customerName,
       'customerPhone': customerPhone,
       'customerEmail': customerEmail,
       'address': address,
     };
 
-    // ✅ Save to user’s order collection
-    await _firestore
+    final userOrderRef = await _firestore
         .collection('users')
         .doc(user.uid)
         .collection('orders')
         .add(orderData);
 
-    // ✅ Also save to admin’s global order view
     await _firestore
         .collection('admin')
         .doc('orders')
         .collection('allOrders')
-        .add(orderData);
+        .doc(userOrderRef.id)
+        .set(orderData);
   }
 
-  /// Fetch orders
+  /// Listen to real-time orders
   Future<void> fetchOrders() async {
+    await _orderSubscription?.cancel(); // Clean old listener
+
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final snapshot =
-        await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('orders')
-            .orderBy('orderDate', descending: true)
-            .get();
+    _orderSubscription = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('orders')
+        .orderBy('orderDate', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+          _orders =
+              snapshot.docs.map((doc) {
+                final data = doc.data();
+                data['id'] = doc.id;
+                return data;
+              }).toList();
 
-    _orders.clear();
-    for (var doc in snapshot.docs) {
-      final data = doc.data();
-      data['id'] = doc.id;
-      _orders.add(data);
-    }
-    notifyListeners();
+          notifyListeners();
+        });
   }
 
-  /// Cancel order
+  /// Cancel order (update status, don't delete)
   Future<void> cancelOrder(String orderId) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -85,10 +88,14 @@ class OrderController with ChangeNotifier {
         .doc(user.uid)
         .collection('orders')
         .doc(orderId)
-        .delete();
+        .update({'status': 'Cancelled'});
 
-    _orders.removeWhere((order) => order['id'] == orderId);
-    notifyListeners();
+    await _firestore
+        .collection('admin')
+        .doc('orders')
+        .collection('allOrders')
+        .doc(orderId)
+        .update({'status': 'Cancelled'});
   }
 
   Future<void> submitFeedback({
@@ -104,6 +111,13 @@ class OrderController with ChangeNotifier {
         .collection('orders')
         .doc(orderId)
         .update({'feedback': feedbackText});
+
+    await _firestore
+        .collection('admin')
+        .doc('orders')
+        .collection('allOrders')
+        .doc(orderId)
+        .update({'feedback': feedbackText});
   }
 
   Future<void> requestReturn(String orderId) async {
@@ -117,10 +131,17 @@ class OrderController with ChangeNotifier {
         .doc(orderId)
         .update({'status': 'Return Requested'});
 
-    final index = _orders.indexWhere((o) => o['id'] == orderId);
-    if (index != -1) {
-      _orders[index]['status'] = 'Return Requested';
-      notifyListeners();
-    }
+    await _firestore
+        .collection('admin')
+        .doc('orders')
+        .collection('allOrders')
+        .doc(orderId)
+        .update({'status': 'Return Requested'});
+  }
+
+  @override
+  void dispose() {
+    _orderSubscription?.cancel();
+    super.dispose();
   }
 }

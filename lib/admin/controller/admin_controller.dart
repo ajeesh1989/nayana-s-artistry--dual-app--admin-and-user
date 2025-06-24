@@ -19,33 +19,39 @@ class AdminController with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 🔍 USERS COLLECTION
+      // USERS
       final usersSnapshot = await _firestore.collection('users').get();
-      debugPrint("📦 Users found: ${usersSnapshot.size}");
+      _userCount = usersSnapshot.size;
 
-      // 🔍 ORDERS - Assumes orders are subcollections named 'orders'
+      // ORDERS
       final ordersSnapshot = await _firestore.collectionGroup('orders').get();
-      debugPrint("🧾 Orders found: ${ordersSnapshot.size}");
+      _orderCount = ordersSnapshot.size;
 
       double totalRevenue = 0.0;
 
       for (var order in ordersSnapshot.docs) {
-        final total = order.data()['total'];
+        final data = order.data();
+        final status = data['status'] ?? '';
 
-        if (total is int) {
-          totalRevenue += total.toDouble();
-        } else if (total is double) {
-          totalRevenue += total;
-        } else {
-          debugPrint("⚠️ Skipped order with invalid 'total': ${order.data()}");
+        // ✅ Count only orders that are not cancelled / pending — modify as needed
+        if (status == 'Delivered' ||
+            status == 'Approved' ||
+            status == 'Shipped' ||
+            status == 'Out for Delivery') {
+          final amount = data['amount'];
+
+          if (amount is int) {
+            totalRevenue += amount.toDouble();
+          } else if (amount is double) {
+            totalRevenue += amount;
+          } else {
+            debugPrint("⚠️ Invalid amount: ${order.id} -> $amount");
+          }
         }
       }
 
-      _userCount = usersSnapshot.size;
-      _orderCount = ordersSnapshot.size;
       _revenue = totalRevenue;
-
-      debugPrint("✅ Revenue calculated: ₹$_revenue");
+      debugPrint("✅ Final revenue calculated: ₹$_revenue");
     } catch (e) {
       debugPrint('🔥 Error fetching dashboard stats: $e');
     } finally {

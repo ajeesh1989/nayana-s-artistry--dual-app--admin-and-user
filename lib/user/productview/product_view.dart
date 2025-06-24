@@ -1,4 +1,5 @@
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:nayanasartistry/user/account/select_address.dart';
 import 'package:nayanasartistry/user/buy_now/buy_now.dart';
@@ -8,7 +9,9 @@ import 'package:nayanasartistry/user/productview/image_preview_screen.dart';
 import 'package:nayanasartistry/user/productview/product_controller.dart';
 import 'package:nayanasartistry/user/account/address_controller.dart';
 import 'package:nayanasartistry/user/account/address_model.dart';
+import 'package:nayanasartistry/user/wishlist/wish_list_controller.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 class ProductViewScreen extends StatelessWidget {
   final Map<String, dynamic> productData;
@@ -19,6 +22,7 @@ class ProductViewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final addressProvider = Provider.of<AddressProvider>(context);
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -27,7 +31,7 @@ class ProductViewScreen extends StatelessWidget {
     final images = List<String>.from(productData['imageUrls'] ?? []);
     final category = productData['category'] ?? '';
     final description = productData['description'] ?? 'No description provided';
-    final rating = productData['rating'] ?? 4.2;
+    final productRating = productData['rating'] ?? 4.2;
 
     final addresses = addressProvider.addresses;
     final selectedAddress = addresses.firstWhere(
@@ -36,8 +40,16 @@ class ProductViewScreen extends StatelessWidget {
           () =>
               addresses.isNotEmpty
                   ? addresses.first
-                  : AddressModel(id: '', fullName: '', phone: '', address: ''),
+                  : AddressModel(
+                    id: '',
+                    fullName: '',
+                    phone: '',
+                    address: '',
+                    userId: '',
+                  ),
     );
+
+    final isInWishlist = wishlistProvider.isInWishlist(productData['id']);
 
     return ChangeNotifierProvider(
       create: (_) => ProductController(),
@@ -45,7 +57,7 @@ class ProductViewScreen extends StatelessWidget {
         builder: (context, controller, _) {
           return Scaffold(
             appBar: AppBar(
-              title: Text("$name", style: TextStyle(fontSize: 18)),
+              title: Text(name, style: const TextStyle(fontSize: 18)),
               centerTitle: true,
             ),
             body: SingleChildScrollView(
@@ -54,7 +66,6 @@ class ProductViewScreen extends StatelessWidget {
                 children: [
                   if (images.isNotEmpty)
                     Stack(
-                      alignment: Alignment.bottomCenter,
                       children: [
                         CarouselSlider.builder(
                           itemCount: images.length,
@@ -62,12 +73,8 @@ class ProductViewScreen extends StatelessWidget {
                             height: 400,
                             viewportFraction: 1,
                             enableInfiniteScroll: false,
-                            onPageChanged: (index, reason) {
-                              controller
-                                  .notifyListeners(); // just to rebuild dots
-                            },
                           ),
-                          itemBuilder: (context, index, realIndex) {
+                          itemBuilder: (context, index, _) {
                             return GestureDetector(
                               onTap: () {
                                 Navigator.push(
@@ -89,27 +96,30 @@ class ProductViewScreen extends StatelessWidget {
                             );
                           },
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children:
-                              images.asMap().entries.map((entry) {
-                                return Container(
-                                  width: 8.0,
-                                  height: 8.0,
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 4.0,
-                                    vertical: 8.0,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withOpacity(0.8),
-                                  ),
-                                );
-                              }).toList(),
+                        Positioned(
+                          right: 12,
+                          top: 12,
+                          child: InkWell(
+                            onTap: () {
+                              wishlistProvider.toggleWishlistItem(
+                                productData,
+                                context,
+                              );
+                            },
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.black.withOpacity(0.4),
+                              child: Icon(
+                                isInWishlist
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: isInWishlist ? Colors.red : Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -128,9 +138,9 @@ class ProductViewScreen extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 1),
-                        Text(description), const SizedBox(height: 8),
-
+                        const SizedBox(height: 2),
+                        Text(description),
+                        const SizedBox(height: 8),
                         Text(
                           "₹$price",
                           style: textTheme.headlineSmall?.copyWith(
@@ -150,14 +160,12 @@ class ProductViewScreen extends StatelessWidget {
                                   color: Colors.orange,
                                   size: 20,
                                 ),
-                                Text("$rating"),
+                                Text("$productRating"),
                               ],
                             ),
                           ],
                         ),
                         const Divider(height: 30),
-
-                        /// ✅ Address Section
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -195,7 +203,117 @@ class ProductViewScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                        const Divider(height: 30),
+                        Text(
+                          "User Reviews",
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        FutureBuilder<QuerySnapshot>(
+                          future:
+                              FirebaseFirestore.instance
+                                  .collection('order_feedback')
+                                  .where(
+                                    'productId',
+                                    isEqualTo:
+                                        productData['id'], // This must match your Firestore value!
+                                  )
+                                  .orderBy('timestamp', descending: true)
+                                  .get(),
+                          builder: (context, snapshot) {
+                            debugPrint(
+                              "Checking reviews for productId: ${productData['id']}",
+                            );
 
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            if (snapshot.hasError) {
+                              return Text("Error: ${snapshot.error}");
+                            }
+
+                            if (!snapshot.hasData ||
+                                snapshot.data!.docs.isEmpty) {
+                              return const Text("No reviews yet.");
+                            }
+
+                            final reviews = snapshot.data!.docs;
+
+                            return ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: reviews.length,
+                              separatorBuilder:
+                                  (_, __) => const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final review = reviews[index];
+                                final feedback = review['feedback'] ?? '';
+                                final rating =
+                                    review['rating']?.toDouble() ?? 0.0;
+                                final timestamp =
+                                    review['timestamp'] != null
+                                        ? (review['timestamp'] as Timestamp)
+                                            .toDate()
+                                        : null;
+                                final customerName =
+                                    review['customerName'] ?? 'User';
+
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    child: Text(
+                                      customerName.isNotEmpty
+                                          ? customerName[0].toUpperCase()
+                                          : "?",
+                                    ),
+                                  ),
+                                  title: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        customerName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          ...List.generate(5, (i) {
+                                            return Icon(
+                                              i < rating
+                                                  ? Icons.star
+                                                  : Icons.star_border,
+                                              size: 16,
+                                              color: Colors.amber,
+                                            );
+                                          }),
+                                          const SizedBox(width: 6),
+                                          if (timestamp != null)
+                                            Text(
+                                              DateFormat(
+                                                'dd/MM/yyyy',
+                                              ).format(timestamp),
+                                              style:
+                                                  Theme.of(
+                                                    context,
+                                                  ).textTheme.bodySmall,
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  subtitle: Text(feedback),
+                                );
+                              },
+                            );
+                          },
+                        ),
                         const SizedBox(height: 80),
                       ],
                     ),

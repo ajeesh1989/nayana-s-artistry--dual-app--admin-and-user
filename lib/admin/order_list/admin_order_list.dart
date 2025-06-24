@@ -10,7 +10,7 @@ class AdminOrderListPage extends StatelessWidget {
 
   final List<String> statusOptions = [
     "Placed",
-    "Pending",
+    "Approved",
     "Shipped",
     "Out for Delivery",
     "Delivered",
@@ -35,9 +35,7 @@ class AdminOrderListPage extends StatelessWidget {
 
                   if (data == null) return const SizedBox.shrink();
 
-                  final userId = data['uid'] ?? '';
-                  final orderId = order.id;
-
+                  final orderPath = order.reference.path;
                   final items = List<Map<String, dynamic>>.from(
                     data['items'] ?? [],
                   );
@@ -48,19 +46,32 @@ class AdminOrderListPage extends StatelessWidget {
                           ? status
                           : statusOptions.first;
 
-                  final customer = data['customerName'] ?? 'Unknown';
+                  final customerName = data['customerName'] ?? 'Unknown';
+                  final email = data['customerEmail'] ?? 'No Email';
                   final phone = data['customerPhone'] ?? '-';
                   final address = data['deliveryAddress'] ?? '-';
                   final payment = data['paymentMethod'] ?? 'Unknown';
 
                   return ExpansionTile(
-                    title: Row(
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Customer: ',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        Row(
+                          children: [
+                            const Text(
+                              'Name: ',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Flexible(child: Text(customerName)),
+                          ],
                         ),
-                        Flexible(child: Text(customer)),
+                        Text(
+                          email,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
                       ],
                     ),
                     subtitle: Text(
@@ -103,30 +114,75 @@ class AdminOrderListPage extends StatelessWidget {
                               );
                             }).toList(),
                             const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                const Text("📦 Update Status:"),
-                                const SizedBox(width: 10),
-                                DropdownButton<String>(
-                                  value: currentStatus,
-                                  onChanged: (newStatus) {
-                                    if (newStatus != null) {
-                                      controller.updateOrderStatus(
-                                        userId,
-                                        orderId,
-                                        newStatus,
-                                      );
-                                    }
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.edit),
+                              label: const Text("Update Status"),
+                              onPressed: () async {
+                                String? selectedStatus = currentStatus;
+
+                                await showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: const Text("Select Order Status"),
+                                      content: SingleChildScrollView(
+                                        child: Column(
+                                          children:
+                                              statusOptions.map((statusOption) {
+                                                final isPastStatus =
+                                                    statusOptions.indexOf(
+                                                      statusOption,
+                                                    ) <
+                                                    statusOptions.indexOf(
+                                                      currentStatus,
+                                                    );
+
+                                                return RadioListTile<String>(
+                                                  value: statusOption,
+                                                  groupValue: selectedStatus,
+                                                  onChanged:
+                                                      isPastStatus
+                                                          ? null
+                                                          : (val) {
+                                                            selectedStatus =
+                                                                val;
+                                                            Navigator.of(
+                                                              context,
+                                                            ).pop();
+                                                          },
+                                                  title: Text(
+                                                    statusOption,
+                                                    style: TextStyle(
+                                                      color:
+                                                          isPastStatus
+                                                              ? Colors.grey
+                                                              : null,
+                                                    ),
+                                                  ),
+                                                );
+                                              }).toList(),
+                                        ),
+                                      ),
+                                    );
                                   },
-                                  items:
-                                      statusOptions.map((statusOption) {
-                                        return DropdownMenuItem(
-                                          value: statusOption,
-                                          child: Text(statusOption),
-                                        );
-                                      }).toList(),
-                                ),
-                              ],
+                                );
+
+                                if (selectedStatus != null &&
+                                    selectedStatus != currentStatus) {
+                                  await controller.updateOrderStatus(
+                                    orderPath,
+                                    selectedStatus!,
+                                  );
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        "Status updated to $selectedStatus",
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
                             ),
                           ],
                         ),

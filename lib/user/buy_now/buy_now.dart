@@ -59,6 +59,7 @@ class BuyNowPage extends StatelessWidget {
       }
 
       Navigator.pushReplacement(
+        // ignore: use_build_context_synchronously
         context,
         MaterialPageRoute(
           builder:
@@ -132,6 +133,8 @@ class BuyNowPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     final theme = Theme.of(context);
     String paymentMethod = 'Online';
     final deliveryDate = _getDeliveryDate();
@@ -219,8 +222,15 @@ class BuyNowPage extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: colorScheme.primary,
+                    ),
                     icon: const Icon(Icons.check_circle),
-                    label: const Text("Place Order"),
+                    label: Text(
+                      "Place Order",
+                      style: TextStyle(color: colorScheme.onSecondary),
+                    ),
                     onPressed: () {
                       if (paymentMethod == 'Online') {
                         _handleRazorpayPayment(context, deliveryDate);
@@ -230,6 +240,7 @@ class BuyNowPage extends StatelessWidget {
                     },
                   ),
                 ),
+                SizedBox(height: 10),
               ],
             ),
           ),

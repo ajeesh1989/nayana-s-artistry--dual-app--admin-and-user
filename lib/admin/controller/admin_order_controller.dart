@@ -16,21 +16,12 @@ class AdminOrderController with ChangeNotifier {
       final snapshot =
           await FirebaseFirestore.instance.collectionGroup('orders').get();
 
-      debugPrint("📦 Found ${snapshot.size} orders");
-
       _orders.clear();
       _orders.addAll(snapshot.docs);
 
-      // Sort safely
       _orders.sort((a, b) {
-        final aData = a.data() as Map<String, dynamic>?;
-        final bData = b.data() as Map<String, dynamic>?;
-
-        final aDate =
-            (aData?['orderDate'] as Timestamp?)?.toDate() ?? DateTime(0);
-        final bDate =
-            (bData?['orderDate'] as Timestamp?)?.toDate() ?? DateTime(0);
-
+        final aDate = (a['orderDate'] as Timestamp?)?.toDate() ?? DateTime(0);
+        final bDate = (b['orderDate'] as Timestamp?)?.toDate() ?? DateTime(0);
         return bDate.compareTo(aDate);
       });
     } catch (e) {
@@ -41,20 +32,17 @@ class AdminOrderController with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateOrderStatus(
-    String userId,
-    String orderId,
-    String newStatus,
-  ) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('orders')
-          .doc(orderId)
-          .update({'status': newStatus});
+  Future<void> updateOrderStatus(String orderPath, String newStatus) async {
+    if (orderPath.isEmpty) {
+      debugPrint("❗ Invalid order document path");
+      return;
+    }
 
-      await fetchOrders(); // Refresh
+    try {
+      await FirebaseFirestore.instance.doc(orderPath).update({
+        'status': newStatus,
+      });
+      await fetchOrders();
     } catch (e) {
       debugPrint("🔥 Error updating order status: $e");
     }

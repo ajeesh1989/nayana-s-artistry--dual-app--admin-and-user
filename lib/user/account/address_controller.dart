@@ -23,8 +23,14 @@ class AddressProvider with ChangeNotifier {
 
     _addresses =
         snapshot.docs
-            .map((doc) => AddressModel.fromMap(doc.id, doc.data()))
+            .map(
+              (doc) => AddressModel.fromMap(doc.id, {
+                ...doc.data(),
+                'userId': user.uid, // Ensure userId is set in model
+              }),
+            )
             .toList();
+
     notifyListeners();
   }
 
@@ -32,17 +38,24 @@ class AddressProvider with ChangeNotifier {
     final user = _auth.currentUser;
     if (user == null) return;
 
+    final data = {
+      ...address.toMap(),
+      'userId': user.uid, // Ensure userId is saved
+    };
+
     final docRef = await _firestore
         .collection('users')
         .doc(user.uid)
         .collection('addresses')
-        .add(address.toMap());
+        .add(data);
 
     final newAddress = AddressModel(
       id: docRef.id,
       fullName: address.fullName,
       phone: address.phone,
       address: address.address,
+      isDefault: address.isDefault,
+      userId: user.uid,
     );
 
     _addresses.add(newAddress);
@@ -91,7 +104,6 @@ class AddressProvider with ChangeNotifier {
         .doc(user.uid)
         .collection('addresses');
 
-    // Step 1: Unset previous default
     final batch = _firestore.batch();
 
     for (final address in _addresses) {
@@ -100,6 +112,6 @@ class AddressProvider with ChangeNotifier {
     }
 
     await batch.commit();
-    await fetchAddresses(); // Refresh local list
+    await fetchAddresses();
   }
 }

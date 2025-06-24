@@ -1,5 +1,4 @@
 import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nayanasartistry/user/cart/cart_controller.dart';
@@ -117,7 +116,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     },
                   ),
                 ],
-
                 bottom:
                     categories.length > 1 && _tabController != null
                         ? TabBar(
@@ -185,53 +183,60 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           selectedIndex == 0
               ? (categories.length <= 1 || _tabController == null)
                   ? const Center(child: ProductShimmer())
-                  : Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      CarouselSlider(
-                        options: CarouselOptions(
-                          height: 180.0,
-                          autoPlay: true,
-                          enlargeCenterPage: true,
-                          viewportFraction: 0.9,
-                        ),
-                        items:
-                            [
-                              'https://picsum.photos/id/1005/400/200',
-                              'https://picsum.photos/id/1021/400/200',
-                              'https://picsum.photos/id/1045/400/200',
-                            ].map((imageUrl) {
-                              return ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  imageUrl,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                ),
-                              );
-                            }).toList(),
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children:
-                              categories.map((category) {
-                                return StreamBuilder<QuerySnapshot>(
-                                  stream: provider.fetchProducts(category),
-                                  builder: (context, snapshot) {
-                                    if (!snapshot.hasData) {
-                                      return const ProductShimmer();
-                                    }
+                  : TabBarView(
+                    controller: _tabController,
+                    children:
+                        categories.map((category) {
+                          return StreamBuilder<QuerySnapshot>(
+                            stream: provider.fetchProducts(category),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) {
+                                return const ProductShimmer();
+                              }
 
-                                    final products = snapshot.data!.docs;
-                                    if (products.isEmpty) {
-                                      return const Center(
-                                        child: Text("No products found"),
-                                      );
-                                    }
+                              final products = snapshot.data!.docs;
 
-                                    return GridView.builder(
+                              if (products.isEmpty) {
+                                return const Center(
+                                  child: Text("No products found"),
+                                );
+                              }
+
+                              return SingleChildScrollView(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 10),
+                                    CarouselSlider(
+                                      options: CarouselOptions(
+                                        height: 180.0,
+                                        autoPlay: true,
+                                        enlargeCenterPage: true,
+                                        viewportFraction: 0.9,
+                                      ),
+                                      items:
+                                          [
+                                            'https://picsum.photos/id/1005/400/200',
+                                            'https://picsum.photos/id/1021/400/200',
+                                            'https://picsum.photos/id/1045/400/200',
+                                          ].map((imageUrl) {
+                                            return ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              child: Image.network(
+                                                imageUrl,
+                                                fit: BoxFit.cover,
+                                                width: double.infinity,
+                                              ),
+                                            );
+                                          }).toList(),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    GridView.builder(
                                       padding: const EdgeInsets.all(12),
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
                                       gridDelegate:
                                           const SliverGridDelegateWithFixedCrossAxisCount(
                                             crossAxisCount: 2,
@@ -254,6 +259,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         final name = data['name'] ?? '';
                                         final price = data['price'] ?? 0;
                                         final category = data['category'] ?? '';
+                                        final isInStock =
+                                            data['inStock'] ?? true;
 
                                         final isInWishlist =
                                             Provider.of<WishlistProvider>(
@@ -262,16 +269,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                                         return GestureDetector(
                                           onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder:
-                                                    (context) =>
-                                                        ProductViewScreen(
-                                                          productData: data,
-                                                        ),
-                                              ),
-                                            );
+                                            if (isInStock) {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder:
+                                                      (context) =>
+                                                          ProductViewScreen(
+                                                            productData: data,
+                                                          ),
+                                                ),
+                                              );
+                                            } else {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    "This item is currently unavailable.",
+                                                  ),
+                                                ),
+                                              );
+                                            }
                                           },
                                           child: Card(
                                             elevation: 2,
@@ -295,19 +314,62 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                                     12,
                                                                   ),
                                                             ),
-                                                        child:
+                                                        child: Stack(
+                                                          children: [
                                                             images.isNotEmpty
                                                                 ? Image.network(
                                                                   images[0],
                                                                   fit:
                                                                       BoxFit
                                                                           .cover,
+                                                                  width:
+                                                                      double
+                                                                          .infinity,
+                                                                  height:
+                                                                      double
+                                                                          .infinity,
                                                                 )
                                                                 : Container(
                                                                   color:
                                                                       Colors
                                                                           .grey[300],
+                                                                  child: const Center(
+                                                                    child: Icon(
+                                                                      Icons
+                                                                          .image,
+                                                                      size: 40,
+                                                                      color:
+                                                                          Colors
+                                                                              .grey,
+                                                                    ),
+                                                                  ),
                                                                 ),
+                                                            if (!isInStock)
+                                                              Container(
+                                                                color: Colors
+                                                                    .black
+                                                                    .withOpacity(
+                                                                      0.4,
+                                                                    ),
+                                                                alignment:
+                                                                    Alignment
+                                                                        .center,
+                                                                child: const Text(
+                                                                  'Out of Stock',
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        Colors
+                                                                            .white,
+                                                                    fontSize:
+                                                                        16,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                          ],
+                                                        ),
                                                       ),
                                                     ),
                                                     Padding(
@@ -343,7 +405,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                             .bodyMedium
                                                             ?.copyWith(
                                                               color:
-                                                                  colorScheme
+                                                                  Theme.of(
+                                                                        context,
+                                                                      )
+                                                                      .colorScheme
                                                                       .primary,
                                                               fontWeight:
                                                                   FontWeight
@@ -371,49 +436,50 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                     ),
                                                   ],
                                                 ),
-                                                Positioned(
-                                                  right: 8,
-                                                  top: 8,
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      Provider.of<
-                                                        WishlistProvider
-                                                      >(
-                                                        context,
-                                                        listen: false,
-                                                      ).toggleWishlistItem(
-                                                        data,
-                                                        context,
-                                                      ); // 👈 Pass context
-                                                    },
-
-                                                    child: CircleAvatar(
-                                                      radius: 16,
-                                                      backgroundColor:
-                                                          Colors.white,
-                                                      child: Icon(
-                                                        isInWishlist
-                                                            ? Icons.favorite
-                                                            : Icons
-                                                                .favorite_border,
-                                                        size: 18,
-                                                        color: Colors.red,
+                                                // Wishlist button — only if in stock
+                                                if (isInStock)
+                                                  Positioned(
+                                                    right: 8,
+                                                    top: 8,
+                                                    child: InkWell(
+                                                      onTap: () {
+                                                        Provider.of<
+                                                          WishlistProvider
+                                                        >(
+                                                          context,
+                                                          listen: false,
+                                                        ).toggleWishlistItem(
+                                                          data,
+                                                          context,
+                                                        );
+                                                      },
+                                                      child: CircleAvatar(
+                                                        radius: 16,
+                                                        backgroundColor:
+                                                            Colors.white,
+                                                        child: Icon(
+                                                          isInWishlist
+                                                              ? Icons.favorite
+                                                              : Icons
+                                                                  .favorite_border,
+                                                          size: 18,
+                                                          color: Colors.red,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
                                               ],
                                             ),
                                           ),
                                         );
                                       },
-                                    );
-                                  },
-                                );
-                              }).toList(),
-                        ),
-                      ),
-                    ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        }).toList(),
                   )
               : selectedIndex == 1
               ? const WishlistPage()
@@ -428,14 +494,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         currentIndex: selectedIndex,
         onTap: (index) => provider.setSelectedIndex(index),
         selectedItemColor: colorScheme.primary,
-        // ignore: deprecated_member_use
         unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
         items: [
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             label: 'Home',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.favorite_border),
             label: 'Wishlist',
           ),
@@ -476,12 +541,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
             label: 'Cart',
           ),
-
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
             label: 'Chat',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: 'Profile',
           ),

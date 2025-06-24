@@ -69,8 +69,6 @@ class AccountPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-
-          // Divider Section
           const Divider(),
 
           // Account Options
@@ -80,7 +78,7 @@ class AccountPage extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => OrderHistoryPage()),
+                MaterialPageRoute(builder: (_) => OrderHistoryPage()),
               );
             },
           ),
@@ -90,7 +88,7 @@ class AccountPage extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => WishlistPage()),
+                MaterialPageRoute(builder: (_) => WishlistPage()),
               );
             },
           ),
@@ -107,6 +105,7 @@ class AccountPage extends StatelessWidget {
                     child: Consumer<AddressProvider>(
                       builder: (_, addressProvider, __) {
                         final addresses = addressProvider.addresses;
+
                         if (addresses.isEmpty) {
                           return const Center(
                             child: Text('No addresses saved.'),
@@ -118,13 +117,76 @@ class AccountPage extends StatelessWidget {
                           itemBuilder: (_, index) {
                             final a = addresses[index];
                             return Padding(
-                              padding: const EdgeInsets.all(15.0),
+                              padding: const EdgeInsets.all(8.0),
                               child: ListTile(
                                 title: Text(a.fullName),
                                 subtitle: Text(
                                   '${a.address}\nPhone: ${a.phone}',
                                 ),
                                 isThreeLine: true,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, size: 20),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (_) => AddAddressPage(
+                                                  existingAddress:
+                                                      a, // You'll need to modify AddAddressPage to accept this
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        size: 20,
+                                      ),
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder:
+                                              (_) => AlertDialog(
+                                                title: const Text(
+                                                  'Delete Address',
+                                                ),
+                                                content: const Text(
+                                                  'Are you sure you want to delete this address?',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed:
+                                                        () => Navigator.pop(
+                                                          context,
+                                                          false,
+                                                        ),
+                                                    child: const Text('Cancel'),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed:
+                                                        () => Navigator.pop(
+                                                          context,
+                                                          true,
+                                                        ),
+                                                    child: const Text('Delete'),
+                                                  ),
+                                                ],
+                                              ),
+                                        );
+                                        if (confirm == true) {
+                                          await addressProvider.deleteAddress(
+                                            a.id,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -136,7 +198,6 @@ class AccountPage extends StatelessWidget {
               );
             },
           ),
-
           ListTile(
             leading: const Icon(Icons.add_location_alt_outlined),
             title: const Text('Add New Address'),
@@ -147,7 +208,6 @@ class AccountPage extends StatelessWidget {
               );
             },
           ),
-
           const Divider(height: 40),
 
           // User Joined Info
@@ -175,7 +235,7 @@ class AccountPage extends StatelessWidget {
               final shouldLogout = await showDialog<bool>(
                 context: context,
                 builder:
-                    (context) => AlertDialog(
+                    (_) => AlertDialog(
                       title: const Text("Logout"),
                       content: const Text("Are you sure you want to log out?"),
                       actions: [
@@ -194,11 +254,12 @@ class AccountPage extends StatelessWidget {
               if (shouldLogout == true) {
                 await GoogleSignIn().signOut();
                 await FirebaseAuth.instance.signOut();
-                // ignore: use_build_context_synchronously
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const AuthGate()),
-                  (route) => false,
-                );
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthGate()),
+                    (route) => false,
+                  );
+                }
               }
             },
           ),

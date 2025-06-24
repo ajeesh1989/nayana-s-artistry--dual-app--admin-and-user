@@ -125,35 +125,125 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
                                 ),
                               )
                               : const Icon(Icons.image),
-
                       title: Text(data['name']),
-                      subtitle: Text("₹${data['price']} • ${data['category']}"),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) =>
-                                          EditProductScreen(id: id, data: data),
+                      subtitle: Text(
+                        "₹${data['price']} • ${data['category']}" +
+                            (data['inStock'] == false ? " • Out of Stock" : ""),
+                        style:
+                            data['inStock'] == false
+                                ? const TextStyle(color: Colors.red)
+                                : null,
+                      ),
+                      trailing: PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert),
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) =>
+                                        EditProductScreen(id: id, data: data),
+                              ),
+                            );
+                          } else if (value == 'toggle_stock') {
+                            await FirebaseFirestore.instance
+                                .collection('products')
+                                .doc(id)
+                                .update({
+                                  'inStock': !(data['inStock'] ?? true),
+                                });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  (data['inStock'] ?? true)
+                                      ? 'Marked as Out of Stock'
+                                      : 'Marked as In Stock',
                                 ),
-                              );
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
+                              ),
+                            );
+                          } else if (value == 'delete') {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder:
+                                  (context) => AlertDialog(
+                                    title: const Text("Delete Product"),
+                                    content: const Text(
+                                      "Are you sure you want to delete this product?",
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.of(
+                                              context,
+                                            ).pop(false),
+                                        child: const Text("Cancel"),
+                                      ),
+                                      TextButton(
+                                        onPressed:
+                                            () =>
+                                                Navigator.of(context).pop(true),
+                                        child: const Text(
+                                          "Delete",
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                            );
+
+                            if (confirm == true) {
                               await FirebaseFirestore.instance
                                   .collection('products')
                                   .doc(id)
                                   .delete();
-                            },
-                          ),
-                        ],
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Product deleted"),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        itemBuilder:
+                            (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: ListTile(
+                                  leading: Icon(Icons.edit),
+                                  title: Text("Edit"),
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'toggle_stock',
+                                child: ListTile(
+                                  leading: Icon(
+                                    data['inStock'] == false
+                                        ? Icons.check_circle
+                                        : Icons.remove_shopping_cart,
+                                    color:
+                                        data['inStock'] == false
+                                            ? Colors.green
+                                            : Colors.red,
+                                  ),
+                                  title: Text(
+                                    data['inStock'] == false
+                                        ? "Mark In Stock"
+                                        : "Mark Out of Stock",
+                                  ),
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: ListTile(
+                                  leading: Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  title: Text("Delete"),
+                                ),
+                              ),
+                            ],
                       ),
                     );
                   },
@@ -167,7 +257,7 @@ class _AllProductsScreenState extends State<AllProductsScreen> {
   }
 }
 
-// 📸 Full screen image viewer widget
+// Full screen image viewer
 class FullScreenImageViewer extends StatelessWidget {
   final String imageUrl;
 

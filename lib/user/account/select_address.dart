@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:nayanasartistry/user/account/add_address.dart';
 import 'package:provider/provider.dart';
 import 'package:nayanasartistry/user/account/address_controller.dart';
-import 'package:nayanasartistry/user/account/address_model.dart';
 
 class SelectAddressPage extends StatelessWidget {
   const SelectAddressPage({super.key});
