@@ -2,15 +2,30 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
 
-const serviceAccount = require('./serviceAccountKey.json');
+// ✅ Load service account JSON from local or Render path
+let serviceAccount;
+const localPath = path.join(__dirname, 'serviceAccountKey.json');
+const renderPath = '/etc/secrets/serviceAccountKey.json';
 
+if (fs.existsSync(localPath)) {
+  serviceAccount = require(localPath); // Local development
+} else if (fs.existsSync(renderPath)) {
+  serviceAccount = require(renderPath); // Render deployment
+} else {
+  console.error('❌ Firebase service account key not found!');
+  process.exit(1);
+}
+
+// ✅ Initialize Firebase Admin
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -39,7 +54,6 @@ app.post('/send-notification', async (req, res) => {
   }
 });
 
-// 📣 Broadcast push to all users via topic
 // 📣 Broadcast push to all users via topic
 app.post('/send-to-users', async (req, res) => {
   const { topic, title, body, image } = req.body;
@@ -90,7 +104,7 @@ app.post('/send-to-users', async (req, res) => {
   }
 });
 
-
+// 🚀 Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
