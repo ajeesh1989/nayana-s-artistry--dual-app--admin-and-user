@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nayanasartistry/user/account/address_controller.dart';
 import 'package:nayanasartistry/user/account/select_address.dart';
@@ -210,7 +211,12 @@ class CartPage extends StatelessWidget {
                                             customerPhone:
                                                 selectedAddress.phone,
                                             customerEmail:
-                                                'test@example.com', // Replace with actual user email if available
+                                                FirebaseAuth
+                                                    .instance
+                                                    .currentUser
+                                                    ?.email ??
+                                                'unknown@example.com',
+
                                             address: selectedAddress,
                                             productData: {
                                               'items': cartItems,

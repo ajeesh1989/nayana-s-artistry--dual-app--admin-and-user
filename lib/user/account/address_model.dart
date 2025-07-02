@@ -4,7 +4,9 @@ class AddressModel {
   final String phone;
   final String address;
   final bool isDefault;
-  final String userId; // 👈 Added userId field
+  final String userId;
+  final double? latitude; // NEW
+  final double? longitude; // NEW
 
   AddressModel({
     required this.id,
@@ -12,7 +14,9 @@ class AddressModel {
     required this.phone,
     required this.address,
     this.isDefault = false,
-    required this.userId, // 👈 Added in constructor
+    required this.userId,
+    this.latitude,
+    this.longitude,
   });
 
   Map<String, dynamic> toMap() {
@@ -21,7 +25,9 @@ class AddressModel {
       'phone': phone,
       'address': address,
       'isDefault': isDefault,
-      'userId': userId, // 👈 Added to map
+      'userId': userId,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
@@ -32,7 +38,9 @@ class AddressModel {
       phone: map['phone'] ?? '',
       address: map['address'] ?? '',
       isDefault: map['isDefault'] ?? false,
-      userId: map['userId'] ?? '', // 👈 Parse userId
+      userId: map['userId'] ?? '',
+      latitude: map['latitude'],
+      longitude: map['longitude'],
     );
   }
 }

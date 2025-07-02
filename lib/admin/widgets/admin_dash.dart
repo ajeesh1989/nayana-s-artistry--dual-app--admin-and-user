@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:nayanasartistry/admin/notification/notification_sender_page.dart';
 import 'package:nayanasartistry/admin/widgets/admin_user_list.dart';
+import 'package:nayanasartistry/admin/widgets/delete_all_order.dart';
 import 'package:nayanasartistry/user/shimmer.dart';
 import 'package:provider/provider.dart';
 
@@ -104,7 +106,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
               ActionTile(
                 icon: Icons.shopping_cart_outlined,
                 title: "View Orders",
@@ -188,6 +190,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   value: isDarkMode,
                   onChanged: (val) => themeProvider.toggleTheme(val),
                 ),
+              ),
+              ActionTile(
+                icon: Icons.emergency,
+                title: "Caution",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EmergencyDeleteOrdersPage(),
+                    ),
+                  );
+                },
+              ),
+              ActionTile(
+                icon: Icons.notifications,
+                title: "Notification to users",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => NotificationSenderPage(),
+                    ),
+                  );
+                },
               ),
             ],
           );

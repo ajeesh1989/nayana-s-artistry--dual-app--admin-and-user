@@ -52,6 +52,8 @@ class BuyNowPage extends StatelessWidget {
         customerEmail: customerEmail,
         address: address.address,
         deliveryDate: deliveryDate,
+        latitude: address.latitude, // ✅ Added
+        longitude: address.longitude, // ✅ Added
       );
 
       if (productData.containsKey('items')) {
@@ -59,7 +61,6 @@ class BuyNowPage extends StatelessWidget {
       }
 
       Navigator.pushReplacement(
-        // ignore: use_build_context_synchronously
         context,
         MaterialPageRoute(
           builder:
@@ -116,6 +117,8 @@ class BuyNowPage extends StatelessWidget {
       customerEmail: customerEmail,
       address: address.address,
       deliveryDate: deliveryDate,
+      latitude: address.latitude, // ✅ Added
+      longitude: address.longitude, // ✅ Added
     );
 
     if (productData.containsKey('items')) {
@@ -134,7 +137,6 @@ class BuyNowPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
     final theme = Theme.of(context);
     String paymentMethod = 'Online';
     final deliveryDate = _getDeliveryDate();
@@ -240,7 +242,7 @@ class BuyNowPage extends StatelessWidget {
                     },
                   ),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
               ],
             ),
           ),

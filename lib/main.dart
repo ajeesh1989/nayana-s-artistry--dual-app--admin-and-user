@@ -1,18 +1,126 @@
+import 'dart:developer';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:nayanasartistry/admin/controller/admin_controller.dart';
-import 'package:nayanasartistry/admin/controller/admin_order_controller.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:nayanasartistry/user/user_notifications/user_notification_controller.dart';
+import 'package:nayanasartistry/user/user_notifications/user_notifications.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 
-import 'package:nayanasartistry/firebase_options.dart';
-import 'package:nayanasartistry/theme/theme_controller.dart';
-import 'package:nayanasartistry/user/account/address_controller.dart';
-import 'package:nayanasartistry/user/cart/cart_controller.dart';
-import 'package:nayanasartistry/user/home/controller/home_controller.dart';
-import 'package:nayanasartistry/user/order/order_controller.dart';
-import 'package:nayanasartistry/user/pages/splash/splash.dart';
-import 'package:nayanasartistry/user/productview/product_controller.dart';
-import 'package:nayanasartistry/user/wishlist/wish_list_controller.dart';
+import 'firebase_options.dart';
+import 'theme/theme_controller.dart';
+import 'user/pages/splash/splash.dart';
+import 'admin/controller/admin_controller.dart';
+import 'admin/controller/admin_order_controller.dart';
+import 'user/account/address_controller.dart';
+import 'user/cart/cart_controller.dart';
+import 'user/home/controller/home_controller.dart';
+import 'user/order/order_controller.dart';
+import 'user/productview/product_controller.dart';
+import 'user/wishlist/wish_list_controller.dart';
+import 'rider/rider_controller.dart';
+import 'rider/user_location_controller.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  log('📩 BG message received: ${message.data}');
+}
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'high_importance_channel',
+  'High Importance Notifications',
+  description: 'Used for important messages with images',
+  importance: Importance.high,
+);
+
+Future<void> showRichNotification(RemoteMessage message) async {
+  final title = message.data['title'] ?? '';
+  final body = message.data['body'] ?? '';
+  final imageUrl = message.data['image'];
+
+  String? bigPicturePath;
+  if (imageUrl != null && imageUrl.toString().trim().isNotEmpty) {
+    try {
+      final response = await http.get(Uri.parse(imageUrl));
+      final tempDir = await getTemporaryDirectory();
+      final filePath = p.join(tempDir.path, 'notif_image.jpg');
+      final file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      bigPicturePath = filePath;
+    } catch (e) {
+      log('❌ Error loading image: $e');
+    }
+  }
+
+  final androidDetails = AndroidNotificationDetails(
+    channel.id,
+    channel.name,
+    channelDescription: channel.description,
+    importance: Importance.high,
+    priority: Priority.high,
+    styleInformation:
+        bigPicturePath != null
+            ? BigPictureStyleInformation(
+              FilePathAndroidBitmap(bigPicturePath),
+              contentTitle: title,
+              summaryText: body,
+            )
+            : null,
+    icon: '@mipmap/ic_launcher',
+  );
+
+  final notificationDetails = NotificationDetails(android: androidDetails);
+
+  await flutterLocalNotificationsPlugin.show(
+    title.hashCode,
+    title,
+    body,
+    notificationDetails,
+  );
+}
+
+Future<void> saveNotificationIfNew(RemoteMessage message) async {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId == null) return;
+
+  final title = message.data['title'] ?? '';
+  final body = message.data['body'] ?? '';
+  final image = message.data['image'] ?? '';
+
+  final existing =
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .where('title', isEqualTo: title)
+          .where('body', isEqualTo: body)
+          .limit(1)
+          .get();
+
+  if (existing.docs.isEmpty) {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .add({
+          'title': title,
+          'body': body,
+          'image': image,
+          'read': false,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +128,35 @@ void main() async {
 
   final themeProvider = ThemeProvider();
   await themeProvider.loadThemePreference();
+
+  if (Platform.isAndroid) {
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(channel);
+  }
+
+  await FirebaseMessaging.instance.requestPermission();
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  final token = await FirebaseMessaging.instance.getToken();
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null && token != null) {
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'fcmToken': token,
+    }, SetOptions(merge: true));
+  }
+
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'fcmToken': newToken,
+      }, SetOptions(merge: true));
+    }
+  });
 
   runApp(
     MultiProvider(
@@ -37,7 +174,7 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) {
             final c = OrderController();
-            c.fetchOrders(); // 👍 preload
+            c.fetchOrders();
             return c;
           },
         ),
@@ -47,14 +184,51 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => AdminOrderController()..fetchOrders(),
         ),
+        ChangeNotifierProvider(create: (_) => RiderHomeProvider()),
+        ChangeNotifierProvider(create: (_) => UserLocationProvider()),
+        ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
       ],
       child: const MyApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      await showRichNotification(message);
+      await saveNotificationIfNew(message);
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+      await saveNotificationIfNew(message);
+      if (message.data['screen'] == 'user_notifications') {
+        Navigator.pushNamed(context, '/userNotifications');
+      }
+    });
+
+    FirebaseMessaging.instance.getInitialMessage().then((
+      RemoteMessage? message,
+    ) async {
+      if (message != null) {
+        await saveNotificationIfNew(message);
+        if (message.data['screen'] == 'user_notifications') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.pushNamed(context, '/userNotifications');
+          });
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +269,9 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(fontSize: 16, color: Colors.white70),
         ),
       ),
+      routes: {
+        '/userNotifications': (context) => const UserNotificationsPage(),
+      },
       home: const SplashScreen(),
     );
   }

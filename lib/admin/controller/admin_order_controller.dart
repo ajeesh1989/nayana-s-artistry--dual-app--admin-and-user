@@ -8,6 +8,17 @@ class AdminOrderController with ChangeNotifier {
   List<QueryDocumentSnapshot> get orders => _orders;
   bool get isLoading => _isLoading;
 
+  Future<void> assignRider(String orderPath, String riderUid) async {
+    try {
+      await FirebaseFirestore.instance.doc(orderPath).update({
+        'assignedRiderId': riderUid,
+      });
+      await fetchOrders();
+    } catch (e) {
+      debugPrint("🔥 Error assigning rider: $e");
+    }
+  }
+
   Future<void> fetchOrders() async {
     _isLoading = true;
     notifyListeners();

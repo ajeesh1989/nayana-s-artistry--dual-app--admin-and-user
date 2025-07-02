@@ -57,7 +57,6 @@ class AdminUserListPage extends StatelessWidget {
               final data = msg.data() as Map<String, dynamic>;
               final lastText = data['text'] ?? '';
               final userName = data['userName'] ?? 'User';
-              final userEmail = data['userEmail'] ?? '';
 
               return Padding(
                 padding: const EdgeInsets.all(8.0),

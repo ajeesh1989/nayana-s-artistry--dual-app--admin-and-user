@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nayanasartistry/user/cart/cart_controller.dart';
 import 'package:nayanasartistry/user/home/controller/home_controller.dart';
+import 'package:nayanasartistry/user/order/order_history.dart';
 import 'package:nayanasartistry/user/productview/product_view.dart';
 import 'package:nayanasartistry/user/shimmer.dart';
+import 'package:nayanasartistry/user/user_notifications/user_notifications.dart';
 import 'package:nayanasartistry/user/wishlist/wish_list_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:nayanasartistry/user/cart/cart.dart';
@@ -73,6 +75,75 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 title: Image.asset(logoPath, height: 80, fit: BoxFit.contain),
                 centerTitle: true,
                 actions: [
+                  StreamBuilder<QuerySnapshot>(
+                    stream:
+                        FirebaseAuth.instance.currentUser != null
+                            ? FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(FirebaseAuth.instance.currentUser!.uid)
+                                .collection('notifications')
+                                .where('read', isEqualTo: false)
+                                .snapshots()
+                            : const Stream.empty(), // ⛔ Prevents null stream
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData ||
+                          snapshot.connectionState == ConnectionState.waiting) {
+                        return IconButton(
+                          icon: const Icon(Icons.notifications),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const UserNotificationsPage(),
+                              ),
+                            );
+                          },
+                        );
+                      }
+
+                      final unreadCount = snapshot.data!.docs.length;
+
+                      return Stack(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.notifications),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const UserNotificationsPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade300,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 20,
+                                  minHeight: 20,
+                                ),
+                                child: Text(
+                                  '$unreadCount',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                   Consumer<CartProvider>(
                     builder: (context, cartProvider, _) {
                       final cartCount = cartProvider.cartItems.length;
@@ -133,47 +204,131 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       drawer:
           selectedIndex == 0
               ? Drawer(
-                child: ListView(
-                  padding: EdgeInsets.zero,
+                child: Column(
                   children: [
-                    UserAccountsDrawerHeader(
-                      accountName: Text(user?.displayName ?? 'Guest User'),
-                      accountEmail: Text(user?.email ?? 'No email'),
-                      currentAccountPicture: CircleAvatar(
-                        backgroundImage:
-                            user?.photoURL != null
-                                ? NetworkImage(user!.photoURL!)
-                                : null,
-                        child:
-                            user?.photoURL == null
-                                ? const Icon(Icons.person)
-                                : null,
-                      ),
-                      decoration: BoxDecoration(color: colorScheme.primary),
-                    ),
-                    SwitchListTile(
-                      title: const Text("Dark Mode"),
-                      secondary: const Icon(Icons.brightness_6),
-                      value: themeProvider.isDarkMode,
-                      onChanged: themeProvider.toggleTheme,
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.home),
-                      title: const Text('Home'),
-                      onTap: () => Navigator.pop(context),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.person),
-                      title: const Text('Account'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AccountPage(),
+                    Expanded(
+                      child: ListView(
+                        padding: EdgeInsets.zero,
+                        children: [
+                          UserAccountsDrawerHeader(
+                            accountName: Text(
+                              user?.displayName ?? 'Guest User',
+                            ),
+                            accountEmail: Text(user?.email ?? 'No email'),
+                            currentAccountPicture: CircleAvatar(
+                              backgroundImage:
+                                  user?.photoURL != null
+                                      ? NetworkImage(user!.photoURL!)
+                                      : null,
+                              child:
+                                  user?.photoURL == null
+                                      ? const Icon(Icons.person)
+                                      : null,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  isDark
+                                      // ignore: deprecated_member_use
+                                      ? colorScheme.surfaceContainerHighest
+                                          .withOpacity(0.6)
+                                      : colorScheme.primary.withOpacity(0.9),
+                            ),
                           ),
-                        );
-                      },
+                          ListTile(
+                            leading: const Icon(Icons.home),
+                            title: const Text('Home'),
+                            onTap: () => Navigator.pop(context),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.person),
+                            title: const Text('Account'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AccountPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.shopping_bag_outlined),
+                            title: const Text('My Orders'),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => OrderHistoryPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.notifications),
+                            title: const Text('Notifications'),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UserNotificationsPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.info_outline),
+                            title: const Text('About'),
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.description_outlined),
+                            title: const Text('Terms and Conditions'),
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.privacy_tip_outlined),
+                            title: const Text('Privacy Policy'),
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                          ),
+                          SwitchListTile(
+                            title: const Text("Dark Mode"),
+                            secondary: const Icon(Icons.brightness_6),
+                            value: themeProvider.isDarkMode,
+                            onChanged: themeProvider.toggleTheme,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 👇 Footer content
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        children: const [
+                          Divider(),
+                          Text(
+                            'Technology Partner: aj_labs',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            '© 2025 Nayana\'s Artistry',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Version 1.0.0',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+
+# Node.js backend (Firebase notify)
+node_modules/
+.env
+serviceAccountKey.json

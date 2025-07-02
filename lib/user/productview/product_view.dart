@@ -1,5 +1,6 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nayanasartistry/user/account/select_address.dart';
 import 'package:nayanasartistry/user/buy_now/buy_now.dart';
@@ -18,6 +19,14 @@ class ProductViewScreen extends StatelessWidget {
 
   const ProductViewScreen({super.key, required this.productData});
 
+  double calculateAverageRating(List<QueryDocumentSnapshot> docs) {
+    if (docs.isEmpty) return 0.0;
+    final total = docs
+        .map((doc) => (doc['rating'] ?? 0).toDouble())
+        .reduce((a, b) => a + b);
+    return total / docs.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
@@ -31,7 +40,6 @@ class ProductViewScreen extends StatelessWidget {
     final images = List<String>.from(productData['imageUrls'] ?? []);
     final category = productData['category'] ?? '';
     final description = productData['description'] ?? 'No description provided';
-    final productRating = productData['rating'] ?? 4.2;
 
     final addresses = addressProvider.addresses;
     final selectedAddress = addresses.firstWhere(
@@ -149,22 +157,59 @@ class ProductViewScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Chip(label: Text(category)),
-                            const SizedBox(width: 8),
-                            Row(
+                        FutureBuilder<QuerySnapshot>(
+                          future:
+                              FirebaseFirestore.instance
+                                  .collection('order_feedback')
+                                  .where(
+                                    'productId',
+                                    isEqualTo: productData['id'],
+                                  )
+                                  .get(),
+                          builder: (context, snapshot) {
+                            double avgRating = 0.0;
+                            int reviewCount = 0;
+
+                            if (snapshot.hasData &&
+                                snapshot.data!.docs.isNotEmpty) {
+                              reviewCount = snapshot.data!.docs.length;
+                              avgRating = calculateAverageRating(
+                                snapshot.data!.docs,
+                              );
+                            }
+
+                            return Row(
                               children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Colors.orange,
-                                  size: 20,
+                                Chip(label: Text(category)),
+                                const SizedBox(width: 8),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.star,
+                                      color: Colors.orange,
+                                      size: 20,
+                                    ),
+                                    Text(
+                                      "${avgRating.toStringAsFixed(1)}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (reviewCount > 0)
+                                      Text(
+                                        " ($reviewCount reviews)",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                                Text("$productRating"),
                               ],
-                            ),
-                          ],
+                            );
+                          },
                         ),
+
                         const Divider(height: 30),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,16 +262,11 @@ class ProductViewScreen extends StatelessWidget {
                                   .collection('order_feedback')
                                   .where(
                                     'productId',
-                                    isEqualTo:
-                                        productData['id'], // This must match your Firestore value!
+                                    isEqualTo: productData['id'],
                                   )
                                   .orderBy('timestamp', descending: true)
                                   .get(),
                           builder: (context, snapshot) {
-                            debugPrint(
-                              "Checking reviews for productId: ${productData['id']}",
-                            );
-
                             if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
                               return const Center(
@@ -360,7 +400,12 @@ class ProductViewScreen extends StatelessWidget {
                                   amount: price.toDouble(),
                                   customerName: selectedAddress.fullName,
                                   customerPhone: selectedAddress.phone,
-                                  customerEmail: 'test@example.com',
+                                  customerEmail:
+                                      FirebaseAuth
+                                          .instance
+                                          .currentUser
+                                          ?.email ??
+                                      'unknown@example.com',
                                   address: selectedAddress,
                                   productData: productData,
                                 ),

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide PhoneAuthProvider;
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
-import 'package:nayanasartistry/user/home/home.dart';
 import 'package:nayanasartistry/user/pages/splash/splash.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -20,7 +21,9 @@ class AuthGate extends StatelessWidget {
                 : 'assets/images/logo_black.png';
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         if (!snapshot.hasData) {
@@ -60,22 +63,65 @@ class AuthGate extends StatelessWidget {
                       child: SignInScreen(
                         showAuthActionSwitch: false,
                         headerBuilder:
-                            (context, constraints, _) =>
-                                const SizedBox.shrink(),
+                            (context, _, __) => const SizedBox.shrink(),
                         subtitleBuilder:
                             (context, _) => const SizedBox.shrink(),
                         footerBuilder: (context, _) => const SizedBox.shrink(),
                         actions: [
-                          AuthStateChangeAction<SignedIn>((context, _) {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => const SplashScreen(),
-                              ),
-                            );
+                          AuthStateChangeAction<SignedIn>((context, _) async {
+                            final user = FirebaseAuth.instance.currentUser;
+
+                            if (user != null) {
+                              final token =
+                                  await FirebaseMessaging.instance.getToken();
+                              final email = user.email;
+                              final isAdmin =
+                                  email == 'ajeeshrko@gmail.com' ||
+                                  email == 'nayanasartistry@gmail.com';
+
+                              final userDoc = FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(user.uid);
+                              final snapshot = await userDoc.get();
+                              final existingData = snapshot.data();
+
+                              final userData = {
+                                'fcmToken': token,
+                                'email': email,
+                                if (existingData == null ||
+                                    !existingData.containsKey('role'))
+                                  'role':
+                                      isAdmin
+                                          ? 'admin'
+                                          : 'user', // ✅ only set if not already set
+                                'timestamp': FieldValue.serverTimestamp(),
+                              };
+
+                              await userDoc.set(
+                                userData,
+                                SetOptions(merge: true),
+                              );
+
+                              if (isAdmin) {
+                                await FirebaseFirestore.instance
+                                    .collection('adminTokens')
+                                    .doc(user.uid)
+                                    .set(userData, SetOptions(merge: true));
+                              }
+
+                              debugPrint(
+                                "✅ Role set (if not already), token saved",
+                              );
+
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (_) => const SplashScreen(),
+                                ),
+                              );
+                            }
                           }),
                         ],
                         providers: [
-                          // PhoneAuthProvider(),
                           GoogleProvider(
                             clientId:
                                 '502260348857-k3gmmnr1v7rp5do88h9ntt9pp8uj3r33.apps.googleusercontent.com',

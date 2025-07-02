@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:nayanasartistry/user/account/address_controller.dart';
 import 'package:nayanasartistry/user/account/address_model.dart';
 import 'package:provider/provider.dart';
 
 class AddAddressPage extends StatefulWidget {
-  final AddressModel? existingAddress; // NEW: for edit
+  final AddressModel? existingAddress;
 
   const AddAddressPage({super.key, this.existingAddress});
 
@@ -19,6 +20,9 @@ class _AddAddressPageState extends State<AddAddressPage> {
   final _addressController = TextEditingController();
   bool _isDefault = false;
 
+  double? _latitude;
+  double? _longitude;
+
   @override
   void initState() {
     super.initState();
@@ -28,7 +32,30 @@ class _AddAddressPageState extends State<AddAddressPage> {
       _phoneController.text = a.phone;
       _addressController.text = a.address;
       _isDefault = a.isDefault;
+      _latitude = a.latitude;
+      _longitude = a.longitude;
     }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    LocationPermission permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Location permission denied")),
+      );
+      return;
+    }
+
+    final position = await Geolocator.getCurrentPosition();
+    setState(() {
+      _latitude = position.latitude;
+      _longitude = position.longitude;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Location set: ($_latitude, $_longitude)")),
+    );
   }
 
   @override
@@ -74,6 +101,17 @@ class _AddAddressPageState extends State<AddAddressPage> {
                 maxLines: 3,
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _getCurrentLocation,
+                icon: const Icon(Icons.my_location),
+                label: const Text("Use My Location"),
+              ),
+              if (_latitude != null && _longitude != null)
+                Text(
+                  "📍 Location: $_latitude, $_longitude",
+                  style: TextStyle(color: Colors.grey[700]),
+                ),
               const SizedBox(height: 12),
               CheckboxListTile(
                 value: _isDefault,
@@ -104,37 +142,25 @@ class _AddAddressPageState extends State<AddAddressPage> {
                       listen: false,
                     );
 
+                    final newAddress = AddressModel(
+                      id: widget.existingAddress?.id ?? '',
+                      fullName: _nameController.text.trim(),
+                      phone: _phoneController.text.trim(),
+                      address: _addressController.text.trim(),
+                      isDefault: _isDefault,
+                      userId: '',
+                      latitude: _latitude,
+                      longitude: _longitude,
+                    );
+
                     if (widget.existingAddress == null) {
-                      // ADD
-                      final newAddress = AddressModel(
-                        id: '',
-                        fullName: _nameController.text.trim(),
-                        phone: _phoneController.text.trim(),
-                        address: _addressController.text.trim(),
-                        isDefault: _isDefault,
-                        userId: '',
-                      );
-
                       await addressProvider.addAddress(newAddress);
-                      await addressProvider
-                          .fetchAddresses(); // This will refresh immediately
+                      await addressProvider.fetchAddresses();
                     } else {
-                      // EDIT
-                      final updated = AddressModel(
-                        id: widget.existingAddress!.id,
-                        fullName: _nameController.text.trim(),
-                        phone: _phoneController.text.trim(),
-                        address: _addressController.text.trim(),
-                        isDefault: _isDefault,
-                        userId: '',
-                      );
-
-                      await addressProvider.editAddress(updated);
+                      await addressProvider.editAddress(newAddress);
                     }
 
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    }
+                    if (context.mounted) Navigator.pop(context);
                   }
                 },
               ),
