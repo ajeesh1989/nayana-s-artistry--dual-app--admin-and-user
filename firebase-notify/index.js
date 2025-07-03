@@ -116,7 +116,7 @@ app.post('/send-user-status-update', async (req, res) => {
     token: userToken,
     notification: {
       title: '📦 Order Status Updated',
-      body: `Your order #${orderId} is now "${status}"`,
+      body: `Your order #${orderId} is now "${status}".`,
     },
     data: {
       screen: 'order_status',
@@ -135,6 +135,7 @@ app.post('/send-user-status-update', async (req, res) => {
     res.status(500).send({ success: false, error: error.message });
   }
 });
+
 
 // 🚀 Start server
 app.listen(PORT, () => {

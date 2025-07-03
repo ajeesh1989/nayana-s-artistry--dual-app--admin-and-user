@@ -69,14 +69,12 @@ class AdminOrderController with ChangeNotifier {
       await fetchOrders();
 
       if (userFcmToken != null && userFcmToken.toString().isNotEmpty) {
-        final title = "📦 Order Status Update";
-        final body =
-            "Hi $userName, your order of ₹${orderAmount.toStringAsFixed(2)} has been $newStatus.";
+        final orderId = orderPath.split('/').last;
 
         await sendFcmNotification(
           token: userFcmToken,
-          title: title,
-          body: body,
+          orderId: orderId,
+          status: newStatus,
         );
       } else {
         debugPrint("⚠️ No FCM token found for user.");
@@ -88,32 +86,32 @@ class AdminOrderController with ChangeNotifier {
 
   Future<void> sendFcmNotification({
     required String token,
-    required String title,
-    required String body,
+    required String orderId,
+    required String status,
   }) async {
     try {
       final url = Uri.parse(
-        'https://nayana-s-artistry-dual-app-admin-and-user.onrender.com/send-notification',
+        'https://nayana-s-artistry-dual-app-admin-and-user.onrender.com/send-user-status-update',
       );
 
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'adminToken': token, // Device FCM token
-          'customerName': title, // Notification title
-          'amount': body, // Notification body (renamed on server is better)
+          'userToken': token,
+          'orderId': orderId,
+          'status': status,
         }),
       );
 
       if (response.statusCode == 200) {
-        debugPrint("📬 Notification sent via server");
+        debugPrint("📬 Order status notification sent");
       } else {
         debugPrint("❌ Server error: ${response.statusCode}");
         debugPrint("📨 Response: ${response.body}");
       }
     } catch (e) {
-      debugPrint("🔥 Exception sending via server: $e");
+      debugPrint("🔥 Exception sending status update: $e");
     }
   }
 }
