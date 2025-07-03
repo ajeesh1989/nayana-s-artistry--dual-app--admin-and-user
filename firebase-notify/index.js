@@ -115,19 +115,21 @@ app.post('/send-to-users', async (req, res) => {
 
 // ✅ Send order status update to specific user
 app.post('/send-user-status-update', async (req, res) => {
-  const { userToken, orderId, status, userName, amount } = req.body;
+  const { userToken, userName, orderId, amount, status } = req.body;
 
-  if (!userToken || !orderId || !status || !userName || !amount) {
+  if (!userToken || !status || !orderId || !userName || !amount) {
     return res.status(400).send({ success: false, error: 'Missing fields' });
   }
 
   const message = {
     token: userToken,
     notification: {
-      title: '📦 Order Status Updated',
-      body: `Hi ${userName}, your order of ₹${amount} is now "${status}"`,
+      title: '📦 Order Status Update',
+      body: `Hi ${userName}, your order of ₹${amount} has been ${status}.`,
     },
     data: {
+      title: '📦 Order Status Update',
+      body: `Hi ${userName}, your order of ₹${amount} has been ${status}.`,
       screen: 'order_status',
       orderId,
       status,
@@ -140,10 +142,11 @@ app.post('/send-user-status-update', async (req, res) => {
     console.log('✅ Status update sent to user:', response);
     res.status(200).send({ success: true, response });
   } catch (error) {
-    console.error('❌ Error sending status update to user:', error);
+    console.error('❌ Error sending to user:', error);
     res.status(500).send({ success: false, error: error.message });
   }
 });
+
 
 // 🚀 Start server
 app.listen(PORT, () => {

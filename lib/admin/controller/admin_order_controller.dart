@@ -93,17 +93,21 @@ class AdminOrderController with ChangeNotifier {
   }) async {
     try {
       final url = Uri.parse(
-        'https://nayana-s-artistry-dual-app-admin-and-user.onrender.com/send-status-update',
+        'https://nayana-s-artistry-dual-app-admin-and-user.onrender.com/send-notification',
       );
 
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'token': token, 'title': title, 'body': body}),
+        body: jsonEncode({
+          'adminToken': token, // Device FCM token
+          'customerName': title, // Notification title
+          'amount': body, // Notification body (renamed on server is better)
+        }),
       );
 
       if (response.statusCode == 200) {
-        debugPrint("📬 Status update sent via server");
+        debugPrint("📬 Notification sent via server");
       } else {
         debugPrint("❌ Server error: ${response.statusCode}");
         debugPrint("📨 Response: ${response.body}");
