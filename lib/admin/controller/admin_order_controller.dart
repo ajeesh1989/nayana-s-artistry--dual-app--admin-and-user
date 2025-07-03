@@ -54,26 +54,23 @@ class AdminOrderController with ChangeNotifier {
     try {
       final docRef = FirebaseFirestore.instance.doc(orderPath);
       final snapshot = await docRef.get();
-
       final data = snapshot.data();
+
       if (data == null) {
         debugPrint("❌ Order data is null");
         return;
       }
 
       final userFcmToken = data['userFcmToken'];
-      final userName = data['customerName'] ?? 'Customer';
-      final orderAmount = data['amount'] ?? 0.0;
+      final orderId = data['orderId'] ?? docRef.id;
 
       await docRef.update({'status': newStatus});
       await fetchOrders();
 
       if (userFcmToken != null && userFcmToken.toString().isNotEmpty) {
-        final orderId = orderPath.split('/').last;
-
         await sendFcmNotification(
           token: userFcmToken,
-          orderId: orderId,
+          orderId: orderId.toString(),
           status: newStatus,
         );
       } else {
@@ -94,24 +91,32 @@ class AdminOrderController with ChangeNotifier {
         'https://nayana-s-artistry-dual-app-admin-and-user.onrender.com/send-user-status-update',
       );
 
+      final payload = {
+        'userToken': token,
+        'orderId': orderId,
+        'status': status,
+      };
+
+      debugPrint(
+        "🚀 Sending status update with payload: ${jsonEncode(payload)}",
+      );
+
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userToken': token,
-          'orderId': orderId,
-          'status': status,
-        }),
+        body: jsonEncode(payload),
       );
 
+      debugPrint("📨 Response status: ${response.statusCode}");
+      debugPrint("📨 Response body: ${response.body}");
+
       if (response.statusCode == 200) {
-        debugPrint("📬 Order status notification sent");
+        debugPrint("✅ Notification sent successfully to user");
       } else {
-        debugPrint("❌ Server error: ${response.statusCode}");
-        debugPrint("📨 Response: ${response.body}");
+        debugPrint("❌ Server responded with an error");
       }
     } catch (e) {
-      debugPrint("🔥 Exception sending status update: $e");
+      debugPrint("🔥 Exception while sending notification: $e");
     }
   }
 }
