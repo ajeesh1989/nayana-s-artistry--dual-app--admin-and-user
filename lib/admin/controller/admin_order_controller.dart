@@ -10,8 +10,6 @@ class AdminOrderController with ChangeNotifier {
   List<QueryDocumentSnapshot> get orders => _orders;
   bool get isLoading => _isLoading;
 
-  final String _serverKey = 'YOUR_FCM_SERVER_KEY_HERE'; // 🔐 Replace this!
-
   Future<void> fetchOrders() async {
     _isLoading = true;
     notifyListeners();
@@ -58,16 +56,27 @@ class AdminOrderController with ChangeNotifier {
       final snapshot = await docRef.get();
 
       final data = snapshot.data();
-      final userFcmToken = data?['userFcmToken'];
+      if (data == null) {
+        debugPrint("❌ Order data is null");
+        return;
+      }
+
+      final userFcmToken = data['userFcmToken'];
+      final userName = data['customerName'] ?? 'Customer';
+      final orderAmount = data['amount'] ?? 0.0;
 
       await docRef.update({'status': newStatus});
       await fetchOrders();
 
       if (userFcmToken != null && userFcmToken.toString().isNotEmpty) {
+        final title = "📦 Order Status Update";
+        final body =
+            "Hi $userName, your order of ₹${orderAmount.toStringAsFixed(2)} has been $newStatus.";
+
         await sendFcmNotification(
           token: userFcmToken,
-          title: "Order Status Updated",
-          body: "Your order status has been updated to $newStatus.",
+          title: title,
+          body: body,
         );
       } else {
         debugPrint("⚠️ No FCM token found for user.");
@@ -83,25 +92,24 @@ class AdminOrderController with ChangeNotifier {
     required String body,
   }) async {
     try {
+      final url = Uri.parse(
+        'https://nayana-s-artistry-dual-app-admin-and-user.onrender.com/send-status-update',
+      );
+
       final response = await http.post(
-        Uri.parse('https://fcm.googleapis.com/fcm/send'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'key=$_serverKey',
-        },
-        body: jsonEncode({
-          'to': token,
-          'notification': {'title': title, 'body': body, 'sound': 'default'},
-        }),
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'token': token, 'title': title, 'body': body}),
       );
 
       if (response.statusCode == 200) {
-        debugPrint("📬 FCM sent successfully");
+        debugPrint("📬 Status update sent via server");
       } else {
-        debugPrint("❌ Failed to send FCM: ${response.body}");
+        debugPrint("❌ Server error: ${response.statusCode}");
+        debugPrint("📨 Response: ${response.body}");
       }
     } catch (e) {
-      debugPrint("🔥 FCM Exception: $e");
+      debugPrint("🔥 Exception sending via server: $e");
     }
   }
 }

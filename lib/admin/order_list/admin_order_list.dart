@@ -259,9 +259,11 @@ class _AdminOrderListPageState extends State<AdminOrderListPage>
   ) async {
     final statusOptions = ["Placed", "Approved", "Shipped", "Out for Delivery"];
     String? selectedStatus = currentStatus;
+    bool isUpdating = false;
 
     await showDialog(
       context: context,
+      barrierDismissible: !isUpdating,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -269,51 +271,70 @@ class _AdminOrderListPageState extends State<AdminOrderListPage>
               title: const Text("Select Order Status"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
-                children:
-                    statusOptions.map((statusOption) {
-                      final isPast =
-                          statusOptions.indexOf(statusOption) <
-                          statusOptions.indexOf(currentStatus);
-                      return RadioListTile<String>(
-                        value: statusOption,
-                        groupValue: selectedStatus,
-                        onChanged:
-                            isPast
-                                ? null
-                                : (val) {
-                                  setState(() => selectedStatus = val);
-                                },
-                        title: Text(
-                          statusOption,
-                          style: TextStyle(color: isPast ? Colors.grey : null),
-                        ),
-                      );
-                    }).toList(),
+                children: [
+                  ...statusOptions.map((statusOption) {
+                    final isPast =
+                        statusOptions.indexOf(statusOption) <
+                        statusOptions.indexOf(currentStatus);
+                    return RadioListTile<String>(
+                      value: statusOption,
+                      groupValue: selectedStatus,
+                      onChanged:
+                          isPast || isUpdating
+                              ? null
+                              : (val) => setState(() => selectedStatus = val),
+                      title: Text(
+                        statusOption,
+                        style: TextStyle(color: isPast ? Colors.grey : null),
+                      ),
+                    );
+                  }).toList(),
+                  if (isUpdating) ...[
+                    const SizedBox(height: 16),
+                    const CircularProgressIndicator(),
+                  ],
+                ],
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: isUpdating ? null : () => Navigator.pop(context),
                   child: const Text("Cancel"),
                 ),
                 ElevatedButton(
                   onPressed:
-                      selectedStatus == null || selectedStatus == currentStatus
+                      isUpdating ||
+                              selectedStatus == null ||
+                              selectedStatus == currentStatus
                           ? null
                           : () async {
+                            setState(() => isUpdating = true);
                             await controller.updateOrderStatus(
                               orderPath,
                               selectedStatus!,
                             );
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "Status updated to $selectedStatus",
+                            setState(() => isUpdating = false);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    "Status updated to $selectedStatus",
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            }
                           },
-                  child: const Text("Update"),
+                  child:
+                      isUpdating
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : const Text("Update"),
                 ),
               ],
             );
