@@ -11,15 +11,15 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Load service account JSON
+// ✅ Load service account JSON from local or Render path
 let serviceAccount;
 const localPath = path.join(__dirname, 'serviceAccountKey.json');
 const renderPath = '/etc/secrets/serviceAccountKey.json';
 
 if (fs.existsSync(localPath)) {
-  serviceAccount = require(localPath);
+  serviceAccount = require(localPath); // Local development
 } else if (fs.existsSync(renderPath)) {
-  serviceAccount = require(renderPath);
+  serviceAccount = require(renderPath); // Render deployment
 } else {
   console.error('❌ Firebase service account key not found!');
   process.exit(1);
@@ -36,17 +36,13 @@ app.post('/send-notification', async (req, res) => {
 
   const message = {
     token: adminToken,
-    notification: {
+    data: {
       title: '🛒 New Order Placed',
       body: `${customerName} placed an order worth ₹${amount}`,
-    },
-    data: {
       screen: 'admin_orders',
       click_action: 'FLUTTER_NOTIFICATION_CLICK',
     },
   };
-
-  console.log('📤 Sending Admin Notification:\n', JSON.stringify(message, null, 2));
 
   try {
     const responseFirebase = await admin.messaging().send(message);
@@ -76,8 +72,6 @@ app.post('/send-to-users', async (req, res) => {
       click_action: 'FLUTTER_NOTIFICATION_CLICK',
     },
   };
-
-  console.log('📤 Sending Broadcast to Topic:\n', JSON.stringify(message, null, 2));
 
   try {
     const response = await admin.messaging().send(message);
@@ -122,7 +116,7 @@ app.post('/send-user-status-update', async (req, res) => {
     token: userToken,
     notification: {
       title: '📦 Order Status Updated',
-      body: `Your order #${orderId} is now "${status}".`,
+      body: `Your order #${orderId} is now "${status}"`,
     },
     data: {
       screen: 'order_status',
@@ -131,8 +125,6 @@ app.post('/send-user-status-update', async (req, res) => {
       click_action: 'FLUTTER_NOTIFICATION_CLICK',
     },
   };
-
-  console.log('📤 Sending User Status Update:\n', JSON.stringify(message, null, 2));
 
   try {
     const response = await admin.messaging().send(message);
