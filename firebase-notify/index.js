@@ -11,13 +11,13 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Load Firebase Service Account
+// ✅ Load service account JSON from local or Render path
 let serviceAccount;
 const localPath = path.join(__dirname, 'serviceAccountKey.json');
 const renderPath = '/etc/secrets/serviceAccountKey.json';
 
 if (fs.existsSync(localPath)) {
-  serviceAccount = require(localPath); // Local dev
+  serviceAccount = require(localPath); // Local development
 } else if (fs.existsSync(renderPath)) {
   serviceAccount = require(renderPath); // Render deployment
 } else {
@@ -30,21 +30,15 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-// 🔔 Admin notification for new orders
+// 🔔 Send push to a specific admin device token
 app.post('/send-notification', async (req, res) => {
   const { adminToken, customerName, amount } = req.body;
 
-  if (!adminToken || !customerName || !amount) {
-    return res.status(400).send({ success: false, error: 'Missing fields' });
-  }
-
   const message = {
     token: adminToken,
-    notification: {
+    data: {
       title: '🛒 New Order Placed',
       body: `${customerName} placed an order worth ₹${amount}`,
-    },
-    data: {
       screen: 'admin_orders',
       click_action: 'FLUTTER_NOTIFICATION_CLICK',
     },
@@ -60,13 +54,9 @@ app.post('/send-notification', async (req, res) => {
   }
 });
 
-// 📣 Broadcast notification to all users via topic
+// 📣 Broadcast push to all users via topic
 app.post('/send-to-users', async (req, res) => {
   const { topic, title, body, image } = req.body;
-
-  if (!topic || !title || !body) {
-    return res.status(400).send({ success: false, error: 'Missing fields' });
-  }
 
   const message = {
     topic,
@@ -85,13 +75,14 @@ app.post('/send-to-users', async (req, res) => {
 
   try {
     const response = await admin.messaging().send(message);
-    console.log(`📣 Broadcast sent to topic "${topic}"`);
+    console.log(`📣 Broadcast sent to "${topic}"`);
 
     const usersSnap = await admin.firestore().collection('users').get();
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
 
     const savePromises = usersSnap.docs.map((doc) =>
-      admin.firestore()
+      admin
+        .firestore()
         .collection('users')
         .doc(doc.id)
         .collection('notifications')
@@ -113,23 +104,21 @@ app.post('/send-to-users', async (req, res) => {
   }
 });
 
-// ✅ Send order status update to specific user
+// ✅ NEW: Send order status update to specific user
 app.post('/send-user-status-update', async (req, res) => {
-  const { userToken, userName, orderId, amount, status } = req.body;
+  const { userToken, orderId, status } = req.body;
 
-  if (!userToken || !status || !orderId || !userName || !amount) {
+  if (!userToken || !status || !orderId) {
     return res.status(400).send({ success: false, error: 'Missing fields' });
   }
 
   const message = {
     token: userToken,
     notification: {
-      title: '📦 Order Status Update',
-      body: `Hi ${userName}, your order of ₹${amount} has been ${status}.`,
+      title: '📦 Order Status Updated',
+      body: `Your order #${orderId} is now "${status}"`,
     },
     data: {
-      title: '📦 Order Status Update',
-      body: `Hi ${userName}, your order of ₹${amount} has been ${status}.`,
       screen: 'order_status',
       orderId,
       status,
@@ -147,8 +136,7 @@ app.post('/send-user-status-update', async (req, res) => {
   }
 });
 
-
 // 🚀 Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
