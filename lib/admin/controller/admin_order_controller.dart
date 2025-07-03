@@ -63,15 +63,22 @@ class AdminOrderController with ChangeNotifier {
 
       final userFcmToken = data['userFcmToken'];
       final orderId = data['orderId'] ?? docRef.id;
+      final customerName = data['customerName'] ?? 'Customer';
+      final amount = data['amount'] ?? 0.0;
 
       await docRef.update({'status': newStatus});
       await fetchOrders();
 
       if (userFcmToken != null && userFcmToken.toString().isNotEmpty) {
+        final title = "📦 Order Status Updated";
+        final body =
+            "Hi $customerName, your order of ₹${amount.toStringAsFixed(2)} has been $newStatus.";
+
         await sendFcmNotification(
           token: userFcmToken,
+          title: title,
+          body: body,
           orderId: orderId.toString(),
-          status: newStatus,
         );
       } else {
         debugPrint("⚠️ No FCM token found for user.");
@@ -83,8 +90,9 @@ class AdminOrderController with ChangeNotifier {
 
   Future<void> sendFcmNotification({
     required String token,
+    required String title,
+    required String body,
     required String orderId,
-    required String status,
   }) async {
     try {
       final url = Uri.parse(
@@ -94,12 +102,10 @@ class AdminOrderController with ChangeNotifier {
       final payload = {
         'userToken': token,
         'orderId': orderId,
-        'status': status,
+        'status': body, // We're sending the full sentence in status field
       };
 
-      debugPrint(
-        "🚀 Sending status update with payload: ${jsonEncode(payload)}",
-      );
+      debugPrint("🚀 Sending payload: ${jsonEncode(payload)}");
 
       final response = await http.post(
         url,
@@ -111,12 +117,12 @@ class AdminOrderController with ChangeNotifier {
       debugPrint("📨 Response body: ${response.body}");
 
       if (response.statusCode == 200) {
-        debugPrint("✅ Notification sent successfully to user");
+        debugPrint("✅ Notification sent successfully");
       } else {
-        debugPrint("❌ Server responded with an error");
+        debugPrint("❌ Failed to send notification");
       }
     } catch (e) {
-      debugPrint("🔥 Exception while sending notification: $e");
+      debugPrint("🔥 Error sending notification: $e");
     }
   }
 }

@@ -46,8 +46,10 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
 // ... keep all imports as is
 
 Future<void> showRichNotification(RemoteMessage message) async {
-  final title = message.data['title'] ?? '';
-  final body = message.data['body'] ?? '';
+  final title =
+      message.notification?.title ?? message.data['title'] ?? '📦 Order Update';
+  final body = message.notification?.body ?? message.data['body'] ?? '';
+
   final imageUrl = message.data['image'];
 
   String? bigPicturePath;
