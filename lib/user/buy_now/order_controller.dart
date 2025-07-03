@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:nayanasartistry/user/order/send_notification.dart';
+import 'package:nayanasartistry/user/user_notifications/send_notification.dart';
 
 class OrderController {
   final _firestore = FirebaseFirestore.instance;
@@ -22,6 +22,10 @@ class OrderController {
     final user = _auth.currentUser;
     if (user == null) return;
 
+    // 👇 Fetch user doc to get FCM token
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final fcmToken = userDoc['fcmToken'];
+
     final orderData = {
       'amount': amount,
       'items': items,
@@ -33,6 +37,7 @@ class OrderController {
       'deliveryDate': deliveryDate,
       'orderDate': DateTime.now(),
       'status': 'Placed',
+      'userFcmToken': fcmToken, // ✅ Add this line
       'deliveryLocation':
           (latitude != null && longitude != null)
               ? GeoPoint(latitude, longitude)

@@ -43,6 +43,8 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
   importance: Importance.high,
 );
 
+// ... keep all imports as is
+
 Future<void> showRichNotification(RemoteMessage message) async {
   final title = message.data['title'] ?? '';
   final body = message.data['body'] ?? '';
@@ -89,38 +91,7 @@ Future<void> showRichNotification(RemoteMessage message) async {
   );
 }
 
-Future<void> saveNotificationIfNew(RemoteMessage message) async {
-  final userId = FirebaseAuth.instance.currentUser?.uid;
-  if (userId == null) return;
-
-  final title = message.data['title'] ?? '';
-  final body = message.data['body'] ?? '';
-  final image = message.data['image'] ?? '';
-
-  final existing =
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('notifications')
-          .where('title', isEqualTo: title)
-          .where('body', isEqualTo: body)
-          .limit(1)
-          .get();
-
-  if (existing.docs.isEmpty) {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('notifications')
-        .add({
-          'title': title,
-          'body': body,
-          'image': image,
-          'read': false,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-  }
-}
+// ✅ Removed saveNotificationIfNew()
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -138,7 +109,7 @@ void main() async {
   }
 
   await FirebaseMessaging.instance.requestPermission();
-
+  await FirebaseMessaging.instance.subscribeToTopic('user_broadcast');
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   final token = await FirebaseMessaging.instance.getToken();
@@ -205,12 +176,10 @@ class _MyAppState extends State<MyApp> {
     super.initState();
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      await showRichNotification(message);
-      await saveNotificationIfNew(message);
+      await showRichNotification(message); // ✅ Only show, don't save
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
-      await saveNotificationIfNew(message);
       if (message.data['screen'] == 'user_notifications') {
         Navigator.pushNamed(context, '/userNotifications');
       }
@@ -218,9 +187,8 @@ class _MyAppState extends State<MyApp> {
 
     FirebaseMessaging.instance.getInitialMessage().then((
       RemoteMessage? message,
-    ) async {
+    ) {
       if (message != null) {
-        await saveNotificationIfNew(message);
         if (message.data['screen'] == 'user_notifications') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.pushNamed(context, '/userNotifications');

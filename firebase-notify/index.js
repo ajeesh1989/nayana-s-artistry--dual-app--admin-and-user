@@ -46,7 +46,7 @@ app.post('/send-notification', async (req, res) => {
 
   try {
     const responseFirebase = await admin.messaging().send(message);
-    console.log('✅ Order push sent:', responseFirebase);
+    console.log('✅ Order push sent to admin:', responseFirebase);
     res.status(200).send({ success: true, response: responseFirebase });
   } catch (error) {
     console.error('❌ Error sending to admin:', error);
@@ -101,6 +101,38 @@ app.post('/send-to-users', async (req, res) => {
   } catch (err) {
     console.error('❌ Broadcast error:', err);
     res.status(500).send({ success: false, error: err.message });
+  }
+});
+
+// ✅ NEW: Send order status update to specific user
+app.post('/send-user-status-update', async (req, res) => {
+  const { userToken, orderId, status } = req.body;
+
+  if (!userToken || !status || !orderId) {
+    return res.status(400).send({ success: false, error: 'Missing fields' });
+  }
+
+  const message = {
+    token: userToken,
+    notification: {
+      title: '📦 Order Status Updated',
+      body: `Your order #${orderId} is now "${status}"`,
+    },
+    data: {
+      screen: 'order_status',
+      orderId,
+      status,
+      click_action: 'FLUTTER_NOTIFICATION_CLICK',
+    },
+  };
+
+  try {
+    const response = await admin.messaging().send(message);
+    console.log('✅ Status update sent to user:', response);
+    res.status(200).send({ success: true, response });
+  } catch (error) {
+    console.error('❌ Error sending to user:', error);
+    res.status(500).send({ success: false, error: error.message });
   }
 });
 

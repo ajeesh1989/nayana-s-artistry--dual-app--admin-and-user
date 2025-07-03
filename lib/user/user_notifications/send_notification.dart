@@ -7,7 +7,9 @@ Future<void> sendPushNotification({
   required String customerName,
   required double amount,
 }) async {
-  final url = Uri.parse('http://192.168.1.2:3000/send-notification');
+  final url = Uri.parse(
+    'https://nayana-s-artistry-dual-app-admin-and-user.onrender.com/send-notification',
+  );
 
   try {
     final response = await http.post(

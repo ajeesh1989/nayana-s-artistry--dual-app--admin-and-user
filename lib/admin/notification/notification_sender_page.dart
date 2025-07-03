@@ -52,8 +52,8 @@ class _NotificationSenderPageState extends State<NotificationSenderPage> {
 
     final response = await http.post(
       Uri.parse(
-        'http://192.168.1.2:3000/send-to-users',
-      ), // update if server IP changes
+        'https://nayana-s-artistry-dual-app-admin-and-user.onrender.com/send-to-users',
+      ),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'topic': 'user_broadcast',

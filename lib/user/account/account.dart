@@ -73,16 +73,6 @@ class AccountPage extends StatelessWidget {
 
           // Account Options
           ListTile(
-            leading: const Icon(Icons.shopping_bag_outlined),
-            title: const Text('My Orders'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => OrderHistoryPage()),
-              );
-            },
-          ),
-          ListTile(
             leading: const Icon(Icons.favorite_border),
             title: const Text('Wishlist'),
             onTap: () {

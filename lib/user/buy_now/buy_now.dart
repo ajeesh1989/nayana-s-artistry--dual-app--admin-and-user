@@ -3,10 +3,11 @@ import 'package:nayanasartistry/user/account/address_model.dart';
 import 'package:nayanasartistry/user/buy_now/order_controller.dart';
 import 'package:nayanasartistry/user/cart/cart_controller.dart';
 import 'package:nayanasartistry/user/order/order_success.dart';
-import 'package:nayanasartistry/user/shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:lottie/lottie.dart';
+import 'package:shimmer/shimmer.dart';
 
 class BuyNowPage extends StatelessWidget {
   final double amount;
@@ -32,13 +33,52 @@ class BuyNowPage extends StatelessWidget {
     return DateFormat('MMM dd, yyyy').format(delivery);
   }
 
+  void _showLoadingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Shimmer.fromColors(
+                    baseColor: Colors.grey.shade600,
+                    highlightColor: Colors.white,
+                    child: const Icon(
+                      Icons
+                          .hourglass_top_rounded, // You can use Icons.notifications or any other
+                      size: 60,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    "Placing your order...",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    "Good things take time ✨",
+                    style: TextStyle(fontSize: 15),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
   void _handleRazorpayPayment(BuildContext context, String deliveryDate) {
     final razorpay = Razorpay();
 
     razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, (response) async {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("✅ Payment Successful")));
+      _showLoadingDialog(context);
 
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
       final items = productData['items'] ?? [productData];
@@ -52,13 +92,15 @@ class BuyNowPage extends StatelessWidget {
         customerEmail: customerEmail,
         address: address.address,
         deliveryDate: deliveryDate,
-        latitude: address.latitude, // ✅ Added
-        longitude: address.longitude, // ✅ Added
+        latitude: address.latitude,
+        longitude: address.longitude,
       );
 
       if (productData.containsKey('items')) {
         cartProvider.clearCart();
       }
+
+      Navigator.pop(context); // Close loading dialog
 
       Navigator.pushReplacement(
         context,
@@ -96,14 +138,7 @@ class BuyNowPage extends StatelessWidget {
   }
 
   void _handleCOD(BuildContext context, String deliveryDate) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: ProductShimmer()),
-    );
-
-    await Future.delayed(const Duration(seconds: 2));
-    Navigator.pop(context);
+    _showLoadingDialog(context);
 
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final items = productData['items'] ?? [productData];
@@ -117,13 +152,15 @@ class BuyNowPage extends StatelessWidget {
       customerEmail: customerEmail,
       address: address.address,
       deliveryDate: deliveryDate,
-      latitude: address.latitude, // ✅ Added
-      longitude: address.longitude, // ✅ Added
+      latitude: address.latitude,
+      longitude: address.longitude,
     );
 
     if (productData.containsKey('items')) {
       cartProvider.clearCart();
     }
+
+    Navigator.pop(context); // Close loading dialog
 
     Navigator.pushReplacement(
       context,

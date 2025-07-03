@@ -43,7 +43,7 @@ class _OrderSuccessPageState extends State<OrderSuccessPage> {
           children: [
             Lottie.asset(
               'assets/lottie/order_success.json', // Add your Lottie file in assets
-              width: 200,
+              width: 250,
               repeat: false,
             ),
             const SizedBox(height: 12),

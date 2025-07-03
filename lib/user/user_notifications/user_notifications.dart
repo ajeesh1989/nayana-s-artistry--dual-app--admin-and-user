@@ -57,133 +57,205 @@ class UserNotificationsPage extends StatelessWidget {
           ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: notifProvider.notificationsStream,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No notifications yet'));
-          }
+      body: RefreshIndicator(
+        onRefresh: () async {
+          notifProvider.notifyListeners(); // Triggers a rebuild
+          await Future.delayed(const Duration(milliseconds: 500));
+        },
+        child: StreamBuilder<QuerySnapshot>(
+          stream: notifProvider.notificationsStream,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.data!.docs.isEmpty) {
+              return const Center(child: Text('No notifications yet'));
+            }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final title = data['title'] ?? '';
-              final body = data['body'] ?? '';
-              final image = data['image'];
-              final ts = data['timestamp'] as Timestamp;
-              final isRead = data['read'] == true;
+            return ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: snapshot.data!.docs.length,
+              itemBuilder: (context, index) {
+                final doc = snapshot.data!.docs[index];
+                final data = doc.data() as Map<String, dynamic>;
+                final title = data['title'] ?? '';
+                final body = data['body'] ?? '';
+                final image = data['image'];
+                final ts = data['timestamp'] as Timestamp;
+                final isRead = data['read'] == true;
 
-              return Slidable(
-                key: ValueKey(doc.id),
-                endActionPane: ActionPane(
-                  motion: const DrawerMotion(),
-                  extentRatio: 0.25,
+                return Column(
                   children: [
-                    SlidableAction(
-                      onPressed:
-                          (_) => notifProvider.deleteNotification(doc.id),
-                      backgroundColor: Colors.red,
-                      icon: Icons.delete,
-                      label: 'Delete',
-                    ),
-                  ],
-                ),
-                child: Card(
-                  color:
-                      isRead
-                          ? null
-                          : Theme.of(context).brightness == Brightness.dark
-                          ? const Color.fromARGB(
-                            255,
-                            21,
-                            25,
-                            26,
-                          ).withOpacity(0.3)
-                          : Colors.grey.shade300,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    Slidable(
+                      key: ValueKey(doc.id),
+                      endActionPane: ActionPane(
+                        motion: const DrawerMotion(),
+                        extentRatio: 0.25,
                         children: [
-                          if (image != null &&
-                              image.toString().trim().isNotEmpty)
-                            Flexible(
-                              flex: 0,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  image,
-                                  width: 80,
-                                  height: 80,
-                                  fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (_, __, ___) => const Icon(
-                                        Icons.broken_image,
-                                        size: 32,
-                                      ),
-                                ),
-                              ),
-                            )
-                          else
-                            const Icon(Icons.notifications, size: 32),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  body,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.access_time,
-                                      size: 14,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      formatTimestamp(ts),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                          SlidableAction(
+                            onPressed:
+                                (_) => notifProvider.deleteNotification(doc.id),
+                            backgroundColor: Colors.red,
+                            icon: Icons.delete,
+                            label: 'Delete',
                           ),
                         ],
                       ),
+                      child: GestureDetector(
+                        onTap:
+                            () => _showNotificationDetail(
+                              context,
+                              title,
+                              body,
+                              image,
+                            ),
+                        child: Card(
+                          color:
+                              isRead
+                                  ? null
+                                  : Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? const Color.fromARGB(
+                                    255,
+                                    21,
+                                    25,
+                                    26,
+                                  ).withOpacity(0.3)
+                                  : Colors.grey.shade300,
+                          margin: const EdgeInsets.only(bottom: 4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (image != null &&
+                                      image.toString().trim().isNotEmpty)
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        image,
+                                        width: 70,
+                                        height: 70,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (_, __, ___) => const Icon(
+                                              Icons.broken_image,
+                                              size: 32,
+                                            ),
+                                      ),
+                                    )
+                                  else
+                                    const Icon(Icons.notifications, size: 32),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          title,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          body,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12, right: 5),
+                          child: Text(
+                            formatTimestamp(ts),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  void _showNotificationDetail(
+    BuildContext context,
+    String title,
+    String body,
+    String? imageUrl,
+  ) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (imageUrl != null && imageUrl.trim().isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (_, __, ___) =>
+                                  const Icon(Icons.broken_image, size: 100),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(body, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Close"),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
     );
   }
 }
